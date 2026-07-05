@@ -1,0 +1,15 @@
+{
+  "name": "イカ・カヤック海況",
+  "short_name": "海況",
+  "description": "西海・大島の潮汐・天気・波・警報（イカ釣り＆カヤック）",
+  "start_url": "home_map.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c1620",
+  "theme_color": "#0c1620",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

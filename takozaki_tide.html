@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c1620">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="海況">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<script>
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+}
+</script>
+<title>高後崎 潮汐カーブ（計算エンジン試作）</title>
+<style>
+  :root{
+    --bg:#0c1620;--bg2:#0f1c28;--card:#14212e;--line:#22384a;--rule:#2c6f8c;
+    --ink:#eef4f9;--mut:#a2b7c8;--dim:#7c93a6;--tide:#38b6f0;--head:#1f6f9c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;-webkit-text-size-adjust:100%}
+  body{max-width:760px;margin:0 auto;padding-bottom:40px}
+  .num{font-variant-numeric:tabular-nums}
+  header{background:linear-gradient(180deg,#1a5b86,#123047);padding:14px 16px 12px;border-bottom:1px solid var(--rule)}
+  .top{display:flex;align-items:center;gap:10px}
+  .backbtn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:9px;width:36px;height:36px;font-size:20px;line-height:1;cursor:pointer;flex:0 0 auto}
+  .backbtn:active{background:rgba(255,255,255,.22)}
+  .top h1{margin:0;font-size:20px;letter-spacing:.03em}
+  .top .base{font-size:12.5px;color:#bcd8ea;margin-top:2px}
+  .datenav{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .datenav button.nav{background:#0e2a3d;border:1px solid var(--rule);color:var(--ink);border-radius:8px;
+    width:38px;height:38px;font-size:18px;cursor:pointer}
+  .datenav button.now{color:#cfe8f5;font-size:15px}
+  .dbox{flex:1;text-align:center;line-height:1.2}
+  .dbox .dd{font-size:19px;font-weight:800}
+  .dbox .sub{font-size:12.5px;color:#cfe6f5}
+  .moon{display:flex;align-items:center;gap:8px}
+  .moon .lab{text-align:right;line-height:1.15}
+  .moon .lab .shio{font-size:17px;font-weight:800}
+  .moon .lab .age{font-size:12px;color:#bcd8ea}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding:10px 12px 2px;-webkit-overflow-scrolling:touch}
+  .chip{flex:0 0 auto;background:var(--card);border:1px solid var(--line);color:var(--ink);
+    border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer}
+  .chip:active{background:#0e2a3d}
+  .chartwrap{padding:6px 8px 0}
+  svg.chart{width:100%;height:auto;display:block;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+
+  svg.chart.drag{cursor:grabbing}
+  .hint{text-align:center;color:var(--dim);font-size:12.5px;padding:6px 0 0}
+  .panel{margin:14px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .panel .phd{padding:10px 13px;font-size:13.5px;font-weight:700;color:var(--mut);
+    border-bottom:1px solid var(--line);letter-spacing:.04em}
+  .sea{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .sea .col{padding:4px 0}
+  .sea .row{display:flex;justify-content:space-between;align-items:baseline;padding:7px 14px}
+  .sea .k{color:#6fa8c8;font-size:13px}
+  .sea .v{font-weight:700;font-size:15px}
+  .sea .v small{font-size:12px;color:var(--mut);font-weight:600;margin-left:2px}
+  .sea .col+.col{border-left:1px solid var(--line)}
+
+  /* 天気ブロック */
+  .wxblock{margin:14px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .wxhead{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding:9px 12px;border-bottom:1px solid var(--line)}
+  .wxnowbtn{background:#12303f;border:1px solid var(--rule);color:#cfe8f5;font-size:15px;font-weight:700;border-radius:8px;width:34px;height:32px;line-height:1;cursor:pointer;padding:0}
+  .wxnowbtn:active{background:#0e2a3d}
+  .wxnowbtn[hidden]{display:none}
+  .wxhead .t{font-size:14.5px;font-weight:700;color:var(--ink)} .wxhead .t small{color:var(--mut);font-weight:600;margin-left:4px;font-size:12.5px}
+  .wxhead .menu{display:flex;gap:2px;background:#0f1c28;border:1px solid var(--line);border-radius:8px;padding:2px}
+  .wxhead .menu button{background:transparent;border:0;color:var(--mut);font-size:13.5px;padding:8px 13px;border-radius:6px;cursor:pointer;font-weight:700}
+  .wxhead .menu button.on{background:#1c4a63;color:#eaf3f9}
+  .wxdemo{font-size:11px;color:#e7c088;border:1px solid #7a5b2f;border-radius:5px;padding:1px 6px;background:#3a2a1233;margin-left:6px}
+  .wxoff{font-size:11px;color:#8ec9e8;border:1px solid #2c6f8c;border-radius:5px;padding:1px 6px;background:#0e2a3d;margin-left:6px;font-weight:700}
+  /* (あ) 矢印列 */
+  .arrowwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:12px 0 0;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+  .arrowwrap.drag{cursor:grabbing}
+  .arrowwrap{scrollbar-width:none;-ms-overflow-style:none}
+  .arrowwrap::-webkit-scrollbar{display:none;width:0;height:0}
+  .arrowstrip{position:relative}
+  .arrowrow{display:flex;padding:0}
+  .arrowrow .cell{flex:0 0 auto;text-align:center}
+  .arrowrow .cell.dstart{border-left:1px solid #2c6f8c}
+  .arrowrow .cell.past{opacity:.4}
+  .arrowrow .cell.wc{line-height:1.3}
+  .cell.wc .wcp{font-size:12px;color:#7fb0cc;font-weight:700}
+  .cell.wc svg{margin:1px 0}
+  .cell.wc .wcar{font-size:12px;color:#4a6274}
+  .cell.wc .wch{font-size:16px;font-weight:800}
+  .cell.wc .wcs{font-size:11.5px;color:#8aa2b4}
+  .cell.wc .wct{font-size:12px;color:#e0a06a;font-weight:700}
+  .wavekey{text-align:center;color:#96b3c6;font-size:11.5px;padding:8px 0 2px} .wavekey b{color:#cfe8f5}
+  .arrowrow .cell .val{font-size:15px;font-weight:800;margin-top:2px}
+  .arrowrow .cell .sub{font-size:12px;color:var(--mut);line-height:1.25}
+  .arrowaxis{display:flex;border-top:2px solid var(--rule);margin-top:6px}
+  .arrowaxis .axc{flex:0 0 auto;text-align:center;font-size:12px;color:#7fb0cc;padding:9px 0 8px;font-variant-numeric:tabular-nums;background:linear-gradient(#3a5b73,#3a5b73) 50% 0/1.6px 7px no-repeat, linear-gradient(#2c4658,#2c4658) 16.66% 0/1px 5px no-repeat, linear-gradient(#2c4658,#2c4658) 83.33% 0/1px 5px no-repeat}
+  .arrowaxis .axc.dstart{color:#cfe8f5;font-weight:700;border-left:1px solid #2c6f8c;font-size:12.5px}
+  .wxnow{position:absolute;top:0;bottom:0;width:2px;background:#e05138;z-index:3;pointer-events:none;animation:nowpulse 2.2s ease-in-out infinite}
+  .wxnowlab{position:absolute;top:-3px;left:2px;font-size:11.5px;color:#fff;background:#e05138;border-radius:3px;padding:1px 5px;font-weight:700}
+  .wxempty{padding:22px 12px;text-align:center;color:var(--mut);font-size:13px}
+  .wxdatebar{margin:8px 12px 0;text-align:center;font-size:15px;font-weight:700;color:#cfe8f5;
+    background:#0e2a3d;border:1px solid var(--rule);border-radius:8px;padding:7px 0}
+  .wxdays{display:flex;overflow-x:auto;border-top:1px solid var(--line)}
+  .wxday{flex:0 0 auto;min-width:50px;flex:1 1 0;text-align:center;padding:10px 2px;cursor:pointer;border-right:1px solid #1a2b3a;line-height:1.4}
+  .wxday.on{background:#0e2a3d}
+  .wxday .d{font-size:15.5px;font-weight:700} .wxday .w{font-size:12px;color:var(--mut)}
+  .wxday.sun .w{color:#e08a7a} .wxday.sat .w{color:#6db6e6}
+  .wxday .tmax{color:#e0836a;font-size:13.5px;font-weight:700} .wxday .tmin{color:#6f9fe0;font-size:13.5px;font-weight:700}
+  .wxday .wxic{font-size:17px;line-height:1;margin:2px 0}
+  .wxdays{overflow-x:hidden}
+  .wxday .today{display:inline-block;font-size:11.5px;background:#7d6a1e;color:#fff;border-radius:4px;padding:1px 6px;margin-top:2px}
+  .wxday .yst,.wavday .yst{display:inline-block;font-size:11.5px;background:#334;color:#b3c2d0;border-radius:4px;padding:1px 6px;margin-top:2px}
+  .wxsrc{padding:7px 12px 11px;font-size:12.5px;color:var(--dim)}
+  /* (い) 判定テーブル */
+  .jt{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed}
+  .jt th{background:var(--bg2);color:var(--mut);font-size:11.5px;font-weight:700;padding:8px 3px;border-bottom:1px solid var(--rule)}
+  .jt td{border-bottom:1px solid #1a2b3a;height:52px;padding:3px 3px;vertical-align:middle;text-align:center;overflow:hidden}
+  .jt .jtime{font-weight:700;padding-left:10px;position:relative;text-align:left}
+  .jt .jtime::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:2px;background:var(--jr,transparent)}
+  .jt tr.jnow{box-shadow:inset 0 0 0 9999px rgba(224,81,56,.08)}
+  .jt tr.jnow .jtime::before{background:#e05138;width:4px;top:3px;bottom:3px;animation:nowpulse 2s ease-in-out infinite}
+  .jt .jnowtag{display:inline-block;color:#fff;background:#e05138;font-size:11px;font-weight:700;border-radius:3px;padding:0 4px;margin-left:4px;vertical-align:middle;animation:nowpulse 2s ease-in-out infinite}
+  .jt .jwind,.jt .jwave{font-weight:700}
+  .jt .jsub{font-size:12px;color:var(--mut)}
+  .jt .wxic2{font-size:16px}
+  .jt .jbar{padding:4px 4px 6px;vertical-align:middle}
+  .jt .jbar .bv{font-size:14px;white-space:nowrap}
+  .jt .jbar .bar{height:5px;background:#24384a;border-radius:3px;margin-top:4px;overflow:hidden}
+  .jt .jbar .bar i{display:block;height:100%;border-radius:3px}
+  .jt .jwindc{text-align:left;white-space:normal;line-height:1.25}
+  .jt .jwindc svg{width:19px;height:19px;vertical-align:middle;margin-right:1px}
+  .jt .jwindc .jsub{display:inline}
+  .jt .off{display:inline-block;font-size:11px;color:#ffd7a8;border:1px solid #b5762f;border-radius:4px;padding:0 4px;margin-top:1px}
+  .jt .off{font-size:11px;color:#ffd7a8;border:1px solid #b5762f;border-radius:4px;padding:0 4px}
+  .jt .chip{font-weight:900;font-size:16px;border-radius:7px;padding:2px 6px;display:inline-block}
+  .jtlegend{padding:10px 12px 12px;font-size:11.5px;color:var(--dim);line-height:1.7}
+  .todaytide{border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  .tt-cell{flex:1 1 0;min-width:96px;background:#0f1c28;border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+  .tt-cell .tk{font-size:12.5px;color:#8ec0dc}
+  .tt-cell .tv{font-weight:800;font-size:18px;margin-top:1px}
+  .tt-cell .tv small{font-size:12px;color:var(--mut);font-weight:600}
+  .tt-cell .tsub{font-size:12.5px;color:var(--mut);margin-top:1px}
+  .tt-hi .tv{color:#7fc5ec} .tt-lo .tv{color:#eec16a} .tt-rng .tv{color:#e7eef4}
+  .alertbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:9px 13px;margin:10px 12px 0;
+    background:var(--card);border:1px solid var(--line);border-radius:10px}
+  .alertbar .ttl{font-size:12.5px;font-weight:700;color:var(--mut);margin-right:2px}
+  .alert-tag{font-size:13px;font-weight:800;border-radius:5px;padding:2px 10px;line-height:1.5;color:#1a1300}
+  .alert-tag.lv-warn{background:#e5b53a}                 /* 注意報=黄 */
+  .alert-tag.lv-alarm{background:#e0663a;color:#fff}     /* 警報=橙 */
+  .alert-tag.lv-emg{background:#c0142e;color:#fff}       /* 特別警報=濃赤 */
+  .alertbar .none{color:#7fb8d8;font-size:13px;font-weight:600}
+  .alertbar .src{margin-left:auto;font-size:12px;color:var(--dim)}
+  .alertbar .demoflag{font-size:11px;color:#e7c088;border:1px solid #7a5b2f;border-radius:5px;padding:1px 6px;background:#3a2a1233}
+  .alerttext{margin:14px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
+  .alerttext .off{font-size:13.5px;font-weight:700;color:#cfe0ec}
+  .alerttext .dt{font-size:12.5px;color:var(--mut);margin:2px 0 7px}
+  .alerttext .body{font-size:14.5px;line-height:1.8;color:#dbe6ef}
+  .alerttext .src{display:block;margin-top:8px;font-size:12px;color:var(--dim)}
+  .alerttext.empty{display:none}
+  .windname{font-size:12px;color:#cfe8f5;font-weight:700;background:#0e2a3d;border:1px solid var(--rule);border-radius:999px;padding:3px 11px}
+  .windblock{margin:14px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .windframe{position:relative;background:#071019}
+  .windframe iframe{display:block;width:100%;height:560px;border:0}
+  .windph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--mut);font-size:13px;line-height:1.7;padding:20px}
+  .wavblock{margin:14px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .wavgrid{display:flex}
+  .wavlabels{flex:0 0 auto;width:58px;border-right:1px solid var(--line);background:#0f1c28}
+  .wavlabels .sp{height:24px}
+  .wavlabels .lb{height:46px;display:flex;align-items:center;padding:0 7px;font-size:12.5px;color:#7fb0cc;border-top:1px solid #17222f;line-height:1.25}
+  .wavscroll{flex:1 1 auto;overflow-x:hidden;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+  .wavscroll.drag{cursor:grabbing}
+  .wavscroll::-webkit-scrollbar{display:none}
+  .wavscroll{scrollbar-width:none}
+  .wavaxis{height:24px;display:flex}
+  .wavaxis .ax{flex:1 1 0;text-align:center;font-size:12.5px;color:#7fb0cc;padding-top:5px;font-variant-numeric:tabular-nums;
+    background:linear-gradient(#3a5b73,#3a5b73) 50% 0/1.4px 6px no-repeat,linear-gradient(#2c4658,#2c4658) 16.66% 0/1px 4px no-repeat,linear-gradient(#2c4658,#2c4658) 83.33% 0/1px 4px no-repeat}
+  .wavrow{height:46px;display:flex;align-items:center;border-top:1px solid #17222f;position:relative}
+  .wavrow .c{flex:1 1 0;text-align:center;line-height:1.1}
+  .wavrow.waveh .c .n{font-size:16.5px;font-weight:800}
+  .wavrow.waveh .c svg{display:block;margin:0 auto}
+  .wavrow.waveh .c .wdirtxt{display:block;font-size:11px;color:#96b3c6;margin-top:0}
+  .wavrow.swell .c{font-size:13.5px;color:#8aa2b4}
+  .wavrow.wtemp .c{font-size:14.5px;color:#e0a06a;font-weight:700}
+  .wavnowl{position:absolute;top:0;bottom:0;width:2px;background:#e05138;z-index:4;pointer-events:none}
+  .wavdays{display:flex;overflow-x:auto;border-top:1px solid var(--line)}
+  .wavday{flex:1 1 0;min-width:50px;text-align:center;padding:8px 2px;cursor:pointer;border-right:1px solid #1a2b3a;line-height:1.35}
+  .wavday.on{background:#0e2a3d}
+  .wavday .d{font-size:15.5px;font-weight:700} .wavday .w{font-size:12.5px;color:var(--mut)}
+  .wavday.sun .w{color:#e08a7a} .wavday.sat .w{color:#6db6e6}
+  .wavday .today{display:inline-block;font-size:11.5px;background:#7d6a1e;color:#fff;border-radius:4px;padding:1px 6px;margin-top:2px}
+  .note{margin:10px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:13px 15px;color:var(--dim);font-size:12.5px;line-height:1.8}
+  .note b{color:var(--mut)}
+  .infobar{display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px 0;color:var(--mut);font-size:12px}
+  .infobar b{color:var(--ink)}
+  .infobar .sun{color:#f0c05a} .infobar .warn{color:#e3a72c} .infobar .moonl{color:#9fc0e0}
+  .nowbar{margin:10px 12px 0;background:#12303f;border:1px solid #2c6f8c;border-radius:10px;
+    padding:9px 13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}
+  .nowbar .cm{font-size:19px;font-weight:800;color:#eaf3f9}
+  .nowbar .dir{font-weight:800;padding:2px 9px;border-radius:999px;font-size:13px}
+  .nowbar .up{background:#2f9bd433;color:#7fc5ec;border:1px solid #2f9bd4}
+  .nowbar .down{background:#e3a72c22;color:#eec16a;border:1px solid #c8901f}
+  .nowbar .nx{color:var(--mut)} .nowbar .nx b{color:var(--ink)}
+  .nowbar.stale{opacity:.55}
+  .chip.now{background:#12303f;border-color:#2c6f8c;color:#cfe8f5;font-weight:700}
+  @keyframes nowpulse{0%,100%{opacity:1}50%{opacity:.35}}
+  #chart .nowline{animation:nowpulse 2.2s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){#chart .nowline{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <button class="backbtn" id="backbtn" title="一覧へ戻る">‹</button>
+    <div style="flex:1"><h1 id="ptname">—</h1><div class="base" id="ptbase">—</div></div>
+    <div class="moon"><span id="moonglyph"></span><div class="lab"><div class="shio" id="shio">—</div><div class="age" id="age">月齢 —</div></div></div>
+  </div>
+  <div class="datenav">
+    <button class="nav" id="prev">‹</button>
+    <div class="dbox"><div class="dd" id="dd">—</div><div class="sub" id="dsub"></div></div>
+    <button class="nav" id="next">›</button>
+    <button class="nav now" id="tonow" title="今へ">◉</button>
+  </div>
+</header>
+
+<div class="alertbar" id="alertbar">
+  <span class="ttl">気象注意報・警報</span>
+  <span class="none">読み込み中…</span>
+</div>
+<div class="nowbar" id="nowbar"></div>
+<div class="infobar" id="infobar"></div>
+<div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 720 500" preserveAspectRatio="xMidYMid meet"></svg></div>
+<div class="panel">
+  <div class="phd" id="seahd">海面情報（高後崎・基準値）</div>
+  <div class="sea">
+    <div class="col">
+      <div class="row"><span class="k">平均水面</span><span class="v">162<small>cm</small></span></div>
+      <div class="row"><span class="k">最高水面</span><span class="v">324<small>cm</small></span></div>
+      <div class="row"><span class="k">最低水面</span><span class="v">0<small>cm</small></span></div>
+    </div>
+    <div class="col">
+      <div class="row"><span class="k">大潮升</span><span class="v">282<small>cm</small></span></div>
+      <div class="row"><span class="k">小潮升</span><span class="v">206<small>cm</small></span></div>
+      <div class="row"><span class="k">大潮差</span><span class="v">240<small>cm</small></span></div>
+      <div class="row"><span class="k">小潮差</span><span class="v">88<small>cm</small></span></div>
+    </div>
+  </div>
+  <div class="todaytide" id="todaytide"></div>
+</div>
+
+<div class="wxblock" id="wxblock">
+  <div class="wxhead">
+    <div class="t" id="wxtitle">天気予報・近況 <small>（風）</small></div>
+    <div class="menu" id="wxmenu">
+      <button data-v="arrow" class="on">一覧</button>
+      <button data-v="table">判定</button>
+    </div>
+    <button class="wxnowbtn" id="wxnowbtn" title="現在時刻へ" aria-label="現在時刻へ">◉</button>
+  </div>
+  <div id="wxbody"></div>
+  <div class="wxsrc" id="wxsrc"></div>
+</div>
+
+<div class="windblock" id="windblock">
+  <div class="wxhead">
+    <div class="t">風レイヤー <small>（Windy）</small></div>
+    <div class="menu" id="windspots"><span class="windname" id="windname">—</span></div>
+  </div>
+  <div class="windframe">
+    <iframe id="windy" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div class="windph" id="windph">
+      <div><div style="font-size:26px;margin-bottom:6px">🌀</div>
+        ここに <b>Windyの風アニメ</b> が入ります<br>
+        <span style="font-size:12.5px;color:#7c93a6">（この枠では表示されません・ブラウザで開くと表示）</span></div>
+    </div>
+  </div>
+  <div class="wxsrc">出典：Windy.com（embed widget・zoom12）／ 個人利用向け</div>
+</div>
+
+<div class="wavblock" id="wavblock">
+  <div class="wxhead"><div class="t">波浪情報 <small id="wavttl">（海況）</small><span class="wxdemo" id="wavdemo" hidden>サンプル</span></div></div>
+  <div id="wavbody"></div>
+  <div class="wxsrc" id="wavsrc"></div>
+</div>
+
+<div class="alerttext" id="alerttext"></div>
+
+<div class="note">
+  この潮位カーブは<b>調和分潮（M2・S2・N2・K1・O1）を三角関数で足し合わせて計算</b>しています。ハードコードした表ではなく、
+  <b>天文引数から任意の日付を生成</b>——数年先でも、圏外でも、外部通信ゼロで描けます（潮は月と太陽の軌道で決まるため）。
+  振幅・遅角は高後崎の公開値（平均水面162・大潮升282・大潮差240・小潮差88cm）とスクショの満干からの<b>概算値</b>で、
+  本番では正式な調和定数に差し替えると cm 単位で一致します。日の出入り・月齢・潮名も端末内で計算。
+</div>
+
+<script>
+const D2R=Math.PI/180;
+const cosd=x=>Math.cos(x*D2R), sind=x=>Math.sin(x*D2R), tand=x=>Math.tan(x*D2R);
+const norm=x=>((x%360)+360)%360;
+const _q=new URLSearchParams(location.search);
+const _num=(k,d)=>_q.has(k)?parseFloat(_q.get(k)):d;
+const POINT={ name:_q.get('name')||'太田尾', lat:_num('lat',33.0397), lon:_num('lon',129.5906),
+  station:_q.get('station')||'高後崎', timeOffsetMin:_num('toff',0), levelRatio:_num('lr',1.0), z0Adjust:_num('z0',0) };
+const LAT=POINT.lat, LON=POINT.lon;          // 日の出入り＝ポイント座標
+document.title=POINT.name+' — 潮汐・天気';
+{const bb=document.getElementById('backbtn'); if(bb) bb.onclick=()=>{ if(history.length>1) history.back(); else location.href='home_map.html'; };}
+(function(){const set=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
+  set('ptname',POINT.name);
+  set('ptbase','基準港：'+POINT.station+'（'+POINT.lat.toFixed(4)+'°N '+POINT.lon.toFixed(4)+'°E）');
+  set('seahd','海面情報（'+POINT.station+'・基準値）');})();
+const Z0=162;                                  // 平均水面(cm, 基準面上)
+// 分潮：速度(deg/h)・振幅(cm)
+const CONS=[
+  {n:'M2',w:28.9841042,H:64,ref:'M'},
+  {n:'S2',w:30.0000000,H:30,ref:'M',off:20},
+  {n:'N2',w:28.4397295,H:12,ref:'M'},
+  {n:'K1',w:15.0410686,H:18,ref:'D'},
+  {n:'O1',w:13.9430356,H:13,ref:'D'},
+];
+// 位相基準（JST）：半日周=7/3 10:09の満潮、日周=7/3 04:40の日周最大
+function jstMs(y,m,d,hh){return Date.UTC(y,m-1,d,0,0,0)+(hh-9)*3600000;}
+const REF_M=jstMs(2026,7,3,10+39/60);
+const REF_D=jstMs(2026,7,3,5+10/60);
+function tide(ms){
+  ms-=POINT.timeOffsetMin*60000;              // 改正数:時刻差
+  let hs=0;
+  for(const c of CONS){
+    const r=c.ref==='M'?REF_M:REF_D;
+    const dh=(ms-r)/3600000;
+    hs+=c.H*cosd(c.w*dh+(c.off||0));
+  }
+  return Z0 + hs*POINT.levelRatio + POINT.z0Adjust;   // 改正数:潮位比・平均水面差
+}
+// 天文：J2000起点の平均黄経
+function dj2000(ms){return ms/86400000+2440587.5-2451545.0;}
+function moonAge(ms){
+  const D=dj2000(ms);
+  const s=norm(218.316+13.176396*D), h=norm(280.466+0.985647*D);
+  const elong=norm(s-h);
+  return elong/360*29.530589;                  // 新月からの日数
+}
+function shioName(age){
+  const k=Math.floor(age)+1;                   // ≈旧暦日
+  const tbl={1:'大潮',2:'大潮',3:'大潮',4:'中潮',5:'中潮',6:'中潮',7:'小潮',8:'小潮',9:'長潮',10:'若潮',
+    11:'中潮',12:'中潮',13:'中潮',14:'大潮',15:'大潮',16:'大潮',17:'大潮',18:'中潮',19:'中潮',20:'中潮',
+    21:'小潮',22:'小潮',23:'長潮',24:'若潮',25:'中潮',26:'中潮',27:'中潮',28:'大潮',29:'大潮',30:'大潮'};
+  return tbl[k]||'中潮';
+}
+// 日の出・日の入り（Almanac for Computers, JST返し）
+function sunEvent(y,m,d,rise){
+  const zenith=90.833, lngHour=LON/15;
+  const N=Math.floor((Date.UTC(y,m-1,d)-Date.UTC(y,0,0))/86400000);
+  const t=N+(((rise?6:18)-lngHour)/24);
+  const M=0.9856*t-3.289;
+  let L=norm(M+1.916*sind(M)+0.020*sind(2*M)+282.634);
+  let RA=norm(Math.atan(0.91764*tand(L))/D2R);
+  RA+=(Math.floor(L/90)*90-Math.floor(RA/90)*90); RA/=15;
+  const sinDec=0.39782*sind(L), cosDec=Math.cos(Math.asin(sinDec));
+  const cosH=(cosd(zenith)-sinDec*sind(LAT))/(cosDec*cosd(LAT));
+  if(cosH>1||cosH<-1)return null;
+  let H=rise?360-Math.acos(cosH)/D2R:Math.acos(cosH)/D2R; H/=15;
+  const T=H+RA-0.06571*t-6.622;
+  let UT=norm((T-lngHour)*15)/15; UT=((UT)%24+24)%24;
+  return (UT+9)%24;                            // JST時
+}
+function moonAlt(ms){
+  const D=ms/86400000+2440587.5-2451545.0;
+  const L=norm(218.316+13.176396*D), M=norm(134.963+13.064993*D), F=norm(93.272+13.229350*D);
+  const lon=L+6.289*sind(M), lat=5.128*sind(F), e=23.4397;
+  const sinDec=sind(lat)*cosd(e)+cosd(lat)*sind(e)*sind(lon);
+  const dec=Math.asin(sinDec)*(180/Math.PI);
+  const ra=norm(Math.atan2(sind(lon)*cosd(e)-tand(lat)*sind(e), cosd(lon))*(180/Math.PI));
+  const gmst=norm(280.16+360.9856235*D), lst=norm(gmst+LON), ha=norm(lst-ra);
+  return Math.asin(sind(LAT)*sinDec+cosd(LAT)*cosd(dec)*cosd(ha))*(180/Math.PI);
+}
+function _bmoon(a,b,rising){for(let k=0;k<24;k++){const md=(a+b)/2;const up=moonAlt(md)>=-0.8;if(up===rising)b=md;else a=md;}return (a+b)/2;}
+function moonEvents(y,m,d){
+  const base=jstMidnight(y,m,d);
+  let prev=moonAlt(base),rise=null,set=null,maxA=-99,maxT=null;
+  for(let i=1;i<=144;i++){const ms=base+i*600000;const a=moonAlt(ms);
+    if(a>maxA){maxA=a;maxT=ms;}
+    if(prev<-0.8&&a>=-0.8&&rise===null)rise=_bmoon(ms-600000,ms,true);
+    if(prev>=-0.8&&a<-0.8&&set===null)set=_bmoon(ms-600000,ms,false);
+    prev=a;}
+  const toJ=ms=>ms==null?null:(((ms-base)/3600000)%24+24)%24;
+  return {rise:toJ(rise),set:toJ(set),transit:toJ(maxT),maxAlt:maxA};
+}
+function moonIllum(age){return (1-Math.cos(age/29.530589*2*Math.PI))/2;}
+function drawMoon(age){
+  const R=13,ph=age/29.530589;                 // 0新月..0.5満月..1
+  const lit=(1-Math.cos(ph*2*Math.PI))/2;      // 照度率
+  const wax=ph<0.5;
+  const rx=R*Math.abs(Math.cos(ph*2*Math.PI));
+  const dark='#0c1620', lite='#dfe8ef';
+  // 満月側の半円 + テルミネータ楕円
+  let s='<svg width="30" height="30" viewBox="-15 -15 30 30">';
+  s+='<circle r="'+R+'" fill="'+dark+'" stroke="#3a5b73"/>';
+  const sideLit=wax?1:-1;
+  // 明部：半円(照らされる側)
+  s+='<path d="M0 '+(-R)+' A '+R+' '+R+' 0 0 '+(wax?1:0)+' 0 '+R+' Z" fill="'+lite+'"/>';
+  // テルミネータ楕円で上書き
+  const fill=lit>0.5?lite:dark;
+  s+='<ellipse cx="0" cy="0" rx="'+rx+'" ry="'+R+'" fill="'+fill+'"/>';
+  s+='<circle r="'+R+'" fill="none" stroke="#3a5b73"/></svg>';
+  return s;
+}
+
+let viewStart=null;              // 表示窓の左端(ms, UT)。窓幅=24h
+const WIN=24*3600000;
+function jstParts(ms){const t=new Date(ms+9*3600000);return {y:t.getUTCFullYear(),m:t.getUTCMonth()+1,d:t.getUTCDate(),hh:t.getUTCHours()+t.getUTCMinutes()/60};}
+function jstMidnight(y,m,d){return jstMs(y,m,d,0);}
+function todayJST(){const n=new Date(Date.now()+9*3600000);return {y:n.getUTCFullYear(),m:n.getUTCMonth()+1,d:n.getUTCDate()};}
+function setView(ms){viewStart=ms;scheduleRender();}
+function fmtHM(hh){let h=Math.floor(hh),mm=Math.round((hh%1)*60);if(mm===60){h++;mm=0;}return String((h%24+24)%24).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
+function fmtClock(ms){return fmtHM(jstParts(ms).hh);}
+
+const WK=['日','月','火','水','木','金','土'];
+let rafPending=false;
+function scheduleRender(){if(rafPending)return;rafPending=true;requestAnimationFrame(()=>{rafPending=false;render();});}
+
+function tideState(ms){
+  const h=tide(ms);
+  const slope=(tide(ms+300000)-tide(ms-300000))/10; // cm/10min 近似(±5分)
+  const rising=slope>=0;
+  // 次の転流(満/干)を探索：符号反転を10分刻みで前方探索
+  let prevS=slope, t=ms, found=null;
+  for(let i=1;i<=160;i++){ // 最大 ~26h先
+    const tt=ms+i*600000;
+    const sl=(tide(tt+60000)-tide(tt-60000))/2;
+    if((prevS>=0)!==(sl>=0)){ // 反転
+      // 二分で精緻化
+      let a=tt-600000,b=tt;
+      for(let k=0;k<20;k++){const mmid=(a+b)/2;const sm=(tide(mmid+60000)-tide(mmid-60000))/2;
+        if((sm>=0)===(prevS>=0))a=mmid;else b=mmid;}
+      found={ms:(a+b)/2,hi:prevS>=0}; break;
+    }
+    prevS=sl;
+  }
+  return {h,slope,rising,next:found};
+}
+function render(){
+  const leftMs=viewStart, rightMs=leftMs+WIN, centerMs=leftMs+WIN/2;
+  // header: 中央の日付
+  const cp=jstParts(centerMs);
+  const noon=jstMidnight(cp.y,cp.m,cp.d)+12*3600000;
+  const age=moonAge(noon), shio=shioName(age);
+  document.getElementById('shio').textContent=shio;
+  document.getElementById('age').textContent='月齢 '+age.toFixed(1)+' ・ '+Math.round(moonIllum(age)*100)+'%';
+  document.getElementById('moonglyph').innerHTML=drawMoon(age);
+  const wd=new Date(Date.UTC(cp.y,cp.m-1,cp.d)).getUTCDay();
+  document.getElementById('dd').innerHTML=cp.m+'月'+cp.d+'日<span style="font-size:13px;color:#bcd8ea">（'+WK[wd]+'）</span>';
+  const t0=todayJST(); const off=Math.round((Date.UTC(cp.y,cp.m-1,cp.d)-Date.UTC(t0.y,t0.m-1,t0.d))/86400000);
+  document.getElementById('dsub').textContent = off===0?'今日':(off>0?'+'+off+'日':off+'日');
+
+  // sun events (中央日)
+  const sr=sunEvent(cp.y,cp.m,cp.d,true), ss=sunEvent(cp.y,cp.m,cp.d,false);
+  const fmt=h=>h==null?'—':fmtHM(h);
+  const _me=moonEvents(cp.y,cp.m,cp.d); const _mil=Math.round(moonIllum(age)*100);
+  document.getElementById('infobar').innerHTML=
+    '<span class="sun">☀ '+fmt(sr)+'</span><span class="sun">🌇 '+fmt(ss)+'</span>'+
+    '<span class="moonl">🌙 照度<b>'+_mil+'%</b></span>'+
+    '<span class="moonl">月出 '+fmt(_me.rise)+' 月入 '+fmt(_me.set)+'</span>'+
+    '<span>潮名 <b>'+shio+'</b></span>'+(Math.abs(off)>60?'<span class="warn">※遠い日付</span>':'');
+
+  // (B) 現在サマリー行（常に実時刻ベース）
+  updateNowbar();
+
+  // sample across window (絶対ms)
+  const N=289, hts=[], mss=[];
+  for(let i=0;i<N;i++){const ms=leftMs+i/(N-1)*WIN; mss.push(ms); hts.push(tide(ms));}
+  const ext=[];
+  for(let i=1;i<N-1;i++){
+    if((hts[i]>hts[i-1]&&hts[i]>=hts[i+1])||(hts[i]<hts[i-1]&&hts[i]<=hts[i+1]))
+      ext.push({ms:mss[i],cm:hts[i],hi:hts[i]>hts[i-1]});
+  }
+  const exf=[]; ext.forEach(e=>{if(!exf.length||(e.ms-exf[exf.length-1].ms)>0.6*3600000)exf.push(e);});
+
+  const W=720,Hh=500,padL=8,padR=8,top=70,bot=446,yMax=500;
+  const xF=ms=>padL+(ms-leftMs)/WIN*(W-padL-padR);
+  const yF=cm=>bot-(cm/yMax)*(bot-top);
+  let s='';
+
+  // night shading (中央日と翌日の日の出入りを使い、窓内に落ちる夜を塗る)
+  function dayMs(dy,h){return jstMidnight(dy.y,dy.m,dy.d)+h*3600000;}
+  const daysToCheck=[jstParts(leftMs),jstParts(rightMs)];
+  const seen={};
+  daysToCheck.forEach(dp=>{const key=dp.y+'-'+dp.m+'-'+dp.d;if(seen[key])return;seen[key]=1;
+    const r=sunEvent(dp.y,dp.m,dp.d,true), st=sunEvent(dp.y,dp.m,dp.d,false);
+    const midn=jstMidnight(dp.y,dp.m,dp.d);
+    if(r!=null){const a=Math.max(leftMs,midn), b=Math.min(rightMs,midn+r*3600000); if(b>a)s+='<rect x="'+xF(a)+'" y="0" width="'+(xF(b)-xF(a))+'" height="'+Hh+'" fill="#000" opacity="0.26"/>';}
+    if(st!=null){const a=Math.max(leftMs,midn+st*3600000), b=Math.min(rightMs,midn+24*3600000); if(b>a)s+='<rect x="'+xF(a)+'" y="0" width="'+(xF(b)-xF(a))+'" height="'+Hh+'" fill="#000" opacity="0.26"/>';}
+  });
+
+  // 月明かりゾーン（イカ釣り用）：月が地平線上＆夜 → 銀色に淡く、照度で濃淡
+  const _sc={};
+  const sunFor=ms=>{const dp=jstParts(ms);const k=dp.y+'-'+dp.m+'-'+dp.d;
+    if(!_sc[k])_sc[k]={r:sunEvent(dp.y,dp.m,dp.d,true),ss:sunEvent(dp.y,dp.m,dp.d,false)};return _sc[k];};
+  const isNight=ms=>{const dp=jstParts(ms);const su=sunFor(ms);return (su.r!=null&&dp.hh<su.r)||(su.ss!=null&&dp.hh>su.ss);};
+  const _mOp=0.05+moonIllum(age)*0.16;
+  let _seg=null;const _MS=120;
+  for(let i=0;i<=_MS;i++){const ms=leftMs+i/_MS*WIN;const lit=moonAlt(ms)>0&&isNight(ms);
+    if(lit&&_seg===null)_seg=ms;
+    if((!lit||i===_MS)&&_seg!==null){const a=xF(_seg),b=xF(Math.min(ms,rightMs));
+      if(b>a)s+='<rect x="'+a+'" y="0" width="'+(b-a)+'" height="'+Hh+'" fill="#cfe0f5" opacity="'+_mOp.toFixed(3)+'"/>';_seg=null;}}
+
+  // grid
+  const avgY=yF(Z0), zeroY=yF(0);
+  s+='<line x1="'+padL+'" y1="'+avgY+'" x2="'+(W-padR)+'" y2="'+avgY+'" stroke="#4a6274"/>';
+  s+='<text x="'+(W-padR-4)+'" y="'+(avgY-4)+'" fill="#6b8296" font-size="15" text-anchor="end">Avg 162</text>';
+  s+='<line x1="'+padL+'" y1="'+zeroY+'" x2="'+(W-padR)+'" y2="'+zeroY+'" stroke="#3a4e5e" stroke-dasharray="4 4"/>';
+  s+='<text x="'+(W-padR-4)+'" y="'+(zeroY-4)+'" fill="#55697a" font-size="15" text-anchor="end">0</text>';
+
+  // midnight boundary line + date label
+  const lp=jstParts(leftMs);
+  let mn=jstMidnight(lp.y,lp.m,lp.d)+24*3600000;
+  for(let k=0;k<2;k++){ if(mn>leftMs&&mn<rightMs){const x=xF(mn);const dp2=jstParts(mn+3600000);
+     s+='<line x1="'+x+'" y1="40" x2="'+x+'" y2="'+bot+'" stroke="#2f9bd4" stroke-width="1.5" opacity="0.7"/>';
+     s+='<text x="'+(x+4)+'" y="'+(top-2)+'" fill="#7fb8d8" font-size="16">'+dp2.m+'/'+dp2.d+'</text>';}
+     mn+=24*3600000;}
+
+  // hour ticks: 1時間ごと目盛り、3時間ごとに数字
+  let firstH=Math.floor(jstParts(leftMs).hh);
+  let tickMs=jstMidnight(lp.y,lp.m,lp.d)+firstH*3600000;
+  while(tickMs<rightMs){ if(tickMs>=leftMs){const x=xF(tickMs);const hh=Math.round(jstParts(tickMs).hh)%24;
+     const major=(hh%3===0);
+     s+='<line x1="'+x+'" y1="'+bot+'" x2="'+x+'" y2="'+(bot+(major?7:4))+'" stroke="'+(major?'#3a5b73':'#2c4658')+'"/>';
+     if(major)s+='<text x="'+x+'" y="'+(bot+20)+'" fill="#5f8299" font-size="17" text-anchor="middle">'+String(hh).padStart(2,'0')+'</text>';}
+     tickMs+=3600000;}
+
+  // tide path
+  let pth='M '+xF(mss[0]).toFixed(1)+' '+yF(hts[0]).toFixed(1);
+  for(let i=1;i<N;i++)pth+=' L '+xF(mss[i]).toFixed(1)+' '+yF(hts[i]).toFixed(1);
+  s+='<path d="'+pth+' L '+xF(rightMs)+' '+bot+' L '+xF(leftMs)+' '+bot+' Z" fill="#38b6f018"/>';
+  s+='<path d="'+pth+'" fill="none" stroke="var(--tide)" stroke-width="3.5" stroke-linejoin="round"/>';
+
+  // sun markers within window
+  daysToCheck.forEach((dp)=>{const key='m'+dp.y+dp.m+dp.d;if(seen[key])return;seen[key]=1;
+    const r=sunEvent(dp.y,dp.m,dp.d,true), st=sunEvent(dp.y,dp.m,dp.d,false);const midn=jstMidnight(dp.y,dp.m,dp.d);
+    if(r!=null){const ms=midn+r*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
+      s+='<text x="'+x+'" y="34" fill="#f0c05a" font-size="16" text-anchor="middle">☀'+fmtHM(r)+'</text>';}}
+    if(st!=null){const ms=midn+st*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
+      s+='<text x="'+x+'" y="34" fill="#f0955a" font-size="16" text-anchor="middle">🌇'+fmtHM(st)+'</text>';}}
+  });
+  // 月の出・月の入りマーカー（第2レール y=50）
+  const _seenM={};
+  daysToCheck.forEach(dp=>{const key=dp.y+'-'+dp.m+'-'+dp.d;if(_seenM[key])return;_seenM[key]=1;
+    const me2=moonEvents(dp.y,dp.m,dp.d);const midn=jstMidnight(dp.y,dp.m,dp.d);
+    if(me2.rise!=null){const ms=midn+me2.rise*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
+      s+='<text x="'+x+'" y="51" fill="#9fc0e0" font-size="16" text-anchor="middle">🌙<tspan font-size="22" font-weight="700">↑</tspan> '+fmtHM(me2.rise)+'</text>';}}
+    if(me2.set!=null){const ms=midn+me2.set*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
+      s+='<text x="'+x+'" y="51" fill="#7fa0c0" font-size="16" text-anchor="middle">🌙<tspan font-size="22" font-weight="700">↓</tspan> '+fmtHM(me2.set)+'</text>';}}
+  });
+
+  // extrema
+  exf.forEach(e=>{const x=xF(e.ms),yy=yF(e.cm);
+    s+='<circle cx="'+x+'" cy="'+yy+'" r="3" fill="#cfe8f5"/>';
+    const ly=e.hi?yy-14:yy+22, tw=56;
+    s+='<g><rect x="'+(x-tw/2)+'" y="'+(ly-13)+'" width="'+tw+'" height="19" rx="4" fill="#e9eef2"/>'+
+       '<text x="'+x+'" y="'+(ly+1)+'" fill="#12202c" font-size="18" font-weight="700" text-anchor="middle">'+Math.round(e.cm)+'<tspan font-size="13" font-weight="600">cm</tspan></text></g>';
+    s+='<text x="'+x+'" y="'+(e.hi?ly-16:ly+20)+'" fill="#8fb0c4" font-size="14" text-anchor="middle">'+fmtClock(e.ms)+'</text>';
+  });
+
+  // now line + (A) 向き矢印・速さ
+  const nowMs=Date.now();
+  if(nowMs>leftMs&&nowMs<rightMs){const st=tideState(nowMs);const x=xF(nowMs),yy=yF(st.h);
+    s+='<g class="nowline"><animate attributeName="opacity" values="1;0.25;1" dur="2s" repeatCount="indefinite"/>'+
+      '<line x1="'+x+'" y1="40" x2="'+x+'" y2="'+bot+'" stroke="#e05138" stroke-width="2"/>'+
+      '<circle cx="'+x+'" cy="'+yy+'" r="5" fill="#e05138" stroke="#fff" stroke-width="1.5"/></g>';
+    // (A) 矢印(上げ↑/下げ↓) + 速さ cm/10min（点のそばに最小限）
+    const ar=st.rising?'▲':'▼', arc=st.rising?'#7fc5ec':'#eec16a';
+    const lx=x+(x> (W*0.7)? -8 : 10), anch=(x>W*0.7)?'end':'start';
+    s+='<text x="'+lx+'" y="'+(yy-6)+'" fill="'+arc+'" font-size="17" font-weight="800" text-anchor="'+anch+'">'+ar+' '+Math.abs(st.slope).toFixed(1)+'<tspan font-size="12" fill="#9fb8c8">cm/10分</tspan></text>';
+    s+='<rect x="'+(x-26)+'" y="'+(bot-2)+'" width="52" height="20" rx="4" fill="#e05138"/>'+
+       '<text x="'+x+'" y="'+(bot+12)+'" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">'+Math.round(st.h)+'cm</text>';
+  }
+  {
+   // 日付帯：表示窓に入る各日の区間を上部に貼り付け（0時境界で区切り・ドラッグで一緒に流れる）
+   let band='<rect x="0" y="0" width="'+W+'" height="32" fill="#0e2634" opacity="0.72"/>';
+   band+='<line x1="0" y1="32" x2="'+W+'" y2="32" stroke="#2c6f8c" stroke-width="1"/>';
+   // 窓の左端の日から右端まで、日ごとに区間を描く
+   const lp2=jstParts(leftMs);
+   let dayStart=jstMidnight(lp2.y,lp2.m,lp2.d);          // 左端の日の0時
+   while(dayStart<rightMs){
+     const dayEnd=dayStart+24*3600000;
+     const segL=Math.max(leftMs,dayStart), segR=Math.min(rightMs,dayEnd);
+     const xL=xF(segL), xR=xF(segR), xc=(xL+xR)/2;
+     const _dp=jstParts(dayStart+3600000);          // その日のJST日付（+1hで安全に内側）
+     const mm=_dp.m, da=_dp.d, wd=new Date(Date.UTC(_dp.y,_dp.m-1,_dp.d)).getUTCDay();
+     const wc=wd===0?'#e08a7a':wd===6?'#7fc0ee':'#eaf3fa';
+     // 0時境界の縦線（窓内なら）
+     if(dayStart>leftMs && dayStart<rightMs){
+       band+='<line x1="'+xF(dayStart)+'" y1="0" x2="'+xF(dayStart)+'" y2="'+bot+'" stroke="#2c6f8c" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>';}
+     // 日付ラベル（区間中央・区間が狭ければ短縮）
+     const wide=(xR-xL)>110;
+     const label=wide?(mm+'月'+da+'日（'+WK[wd]+'）'):(mm+'/'+da+'('+WK[wd]+')');
+     if((xR-xL)>34) band+='<text x="'+xc+'" y="23" fill="'+wc+'" font-size="20" font-weight="700" text-anchor="middle">'+label+'</text>';
+     dayStart=dayEnd;
+   }
+   s+=band;
+  }
+  document.getElementById('chart').innerHTML=s;
+  updateTodayTide();
+}
+
+function updateTodayTide(){
+  // 表示中の中央日の 0:00-24:00(JST) を対象に最満・最干・干満差を算出
+  const cp=jstParts(viewStart+WIN/2);
+  const base=jstMidnight(cp.y,cp.m,cp.d);
+  let hi={cm:-1e9,ms:0}, lo={cm:1e9,ms:0};
+  for(let i=0;i<=288;i++){const ms=base+i*300000;const h=tide(ms);
+    if(h>hi.cm)hi={cm:h,ms}; if(h<lo.cm)lo={cm:h,ms};}
+  const rng=Math.round(hi.cm-lo.cm);
+  const el=document.getElementById('todaytide'); if(!el)return;
+  el.innerHTML=
+    '<div class="tt-cell tt-rng"><div class="tk">本日の干満差</div><div class="tv">'+rng+'<small>cm</small></div>'+
+      '<div class="tsub">'+shioName(moonAge(base+12*3600000))+'</div></div>'+
+    '<div class="tt-cell tt-hi"><div class="tk">本日の最満潮</div><div class="tv">'+Math.round(hi.cm)+'<small>cm</small></div>'+
+      '<div class="tsub">'+fmtHM(jstParts(hi.ms).hh)+'</div></div>'+
+    '<div class="tt-cell tt-lo"><div class="tk">本日の最干潮</div><div class="tv">'+Math.round(lo.cm)+'<small>cm</small></div>'+
+      '<div class="tsub">'+fmtHM(jstParts(lo.ms).hh)+'</div></div>';
+}
+
+// --- ドラッグ操作 ---
+const chartEl=document.getElementById('chart');
+let dragging=false, startX=0, startView=0;
+chartEl.addEventListener('pointerdown',e=>{dragging=true;startX=e.clientX;startView=viewStart;
+  chartEl.classList.add('drag');chartEl.setPointerCapture(e.pointerId);});
+chartEl.addEventListener('pointermove',e=>{if(!dragging)return;
+  const dx=e.clientX-startX; const hoursPerPx=24/chartEl.clientWidth;
+  viewStart=startView - dx*hoursPerPx*3600000;   // 左へ引く=未来
+  scheduleRender();});
+function endDrag(e){if(!dragging)return;dragging=false;chartEl.classList.remove('drag');}
+chartEl.addEventListener('pointerup',endDrag);
+chartEl.addEventListener('pointercancel',endDrag);
+chartEl.addEventListener('pointerleave',endDrag);
+
+// (日付チップ列は撤去。ドラッグ＋前後ボタン＋「今へ」で操作)
+document.getElementById('prev').onclick=()=>setView(viewStart-24*3600000);
+document.getElementById('next').onclick=()=>setView(viewStart+24*3600000);
+
+function updateNowbar(){
+  const st=tideState(Date.now());
+  const nb=document.getElementById('nowbar');
+  const dirCls=st.rising?'up':'down', dirTxt=st.rising?'↑ 上げ潮':'↓ 下げ潮';
+  let nx='';
+  if(st.next){const p=jstParts(st.next.ms);const mins=Math.round((st.next.ms-Date.now())/60000);
+    const hh=Math.floor(mins/60), mm=mins%60;
+    nx='次の'+(st.next.hi?'満潮':'干潮')+' <b>'+fmtHM(p.hh)+'</b>（あと'+(hh>0?hh+'h':'')+mm+'m）／ '+Math.round(tide(st.next.ms))+'cm';}
+  nb.innerHTML='<span class="cm">現在 '+Math.round(st.h)+'cm</span>'+
+    '<span class="dir '+dirCls+'">'+dirTxt+'</span>'+
+    '<span style="color:#9fb8c8">'+Math.abs(st.slope).toFixed(1)+'cm/10分</span>'+
+    '<span class="nx">'+nx+'</span>';
+}
+
+document.getElementById('tonow').onclick=()=>setView(Date.now()-WIN/2);
+
+// 生きた時計：1分ごとに再描画（現在線・サマリーが実時間で進む）
+setInterval(()=>{ if(!dragging) scheduleRender(); }, 60000);
+
+const _t=todayJST(); setView(jstMidnight(_t.y,_t.m,_t.d));
+
+
+// ===================== 天気ブロック（あ:一覧 / い:判定） =====================
+const WDIRS=['北','北北東','北東','東北東','東','東南東','南東','南南東','南','南南西','南西','西南西','西','西北西','北西','北北西'];
+const wdir16=d=>WDIRS[Math.round(d/22.5)%16];
+const wSev=ms=>ms<3?0:ms<5?1:ms<8?2:3;
+const vSev=m=>m==null?-1:m<0.5?0:m<1.0?1:m<1.5?2:3;
+const SYMB=['◎','○','△','×'];
+const VCOL=['#38c46f','#2f9bd4','#e3a72c','#e05138'];
+const VBG=['#38c46f1e','#2f9bd41e','#e3a72c22','#e0513828'];
+const MLAT_W=POINT.lat+0.005, MLON_W=POINT.lon-0.03;   // 波用に沖側へ（ポイント基準）
+let WXDATA=null, wxView='arrow', wxDay=0, WXSAMPLE=false;
+let wxVis=[], wxCellW=52, wxNowX=0, wavDay=0;
+
+async function wxLive(){
+  const b='https://api.open-meteo.com/v1/forecast?latitude='+POINT.lat+'&longitude='+POINT.lon+
+    '&hourly=temperature_2m,precipitation,cloud_cover,wind_speed_10m,wind_direction_10m,weather_code'+
+    '&wind_speed_unit=ms&timezone=Asia%2FTokyo&past_days=1&forecast_days=7';
+  const m='https://marine-api.open-meteo.com/v1/marine?latitude='+MLAT_W+'&longitude='+MLON_W+
+    '&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,sea_surface_temperature&timezone=Asia%2FTokyo&past_days=1&forecast_days=7';
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),8000);
+  const [wx,wv]=await Promise.all([
+    fetch(b,{signal:ctl.signal}).then(r=>{if(!r.ok)throw 0;return r.json();}),
+    fetch(m,{signal:ctl.signal}).then(r=>r.ok?r.json():null).catch(()=>null)]);
+  clearTimeout(to); return parseWx(wx,wv);
+}
+function wxSample(){
+  const now=new Date(Date.now()+9*3600000); now.setUTCHours(0,0,0,0);
+  const base=now.getTime()-9*3600000 - 24*3600000;   // 昨日00:00 JST から
+  const prof=[{w:4.0,dir:215,th:null},{w:3.4,dir:200,th:null},{w:8.6,dir:225,th:null},{w:2.4,dir:70,th:15},
+    {w:5.2,dir:250,th:null},{w:3.8,dir:185,th:null},{w:6.6,dir:305,th:null},{w:2.9,dir:210,th:null}];
+  const t=[],temp=[],pr=[],cl=[],ws=[],wd=[],code=[],mt=[],wh=[],wp=[],wdw=[],shw=[],spw=[],wtw=[];
+  for(let h=0;h<192;h++){const di=Math.floor(h/24),hr=h%24,pf=prof[Math.min(di,prof.length-1)];
+    const ms=base+h*3600000, d=new Date(ms+9*3600000);
+    const iso=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')+'T'+String(hr).padStart(2,'0')+':00';
+    const boost=Math.max(0,Math.sin((hr-6)/24*Math.PI*2))*2.0;
+    const wind=Math.max(0.5,pf.w+boost-(hr<5?1:0));
+    const dir=(pf.dir+Math.sin(h/6)*12+360)%360;
+    let rain=0,wc=wind>7?3:2; const th=pf.th!=null&&hr>=pf.th-1&&hr<=pf.th+2;
+    if(th){wc=95;rain=6+Math.random()*4;} else if(pf.w>0){rain=Math.max(0,3*Math.max(0,Math.sin((hr-4)/20*Math.PI)))*(0.4+Math.random()*0.4);}
+    t.push(iso);temp.push(+(24+4*Math.sin((hr-9)/24*Math.PI*2)+di*0.2).toFixed(1));
+    pr.push(+rain.toFixed(1));cl.push(Math.min(100,Math.round((rain>0?70:45)+rain*4)));
+    ws.push(+wind.toFixed(1));wd.push(+dir.toFixed(0));code.push(wc);
+    mt.push(iso);wh.push(+Math.max(0.1,0.12+wind*0.05).toFixed(2));wp.push(+(5.5+wind*0.12).toFixed(1));
+    wdw.push(+(((dir+30+Math.sin(h/9)*20)%360+360)%360).toFixed(0));
+    shw.push(+Math.max(0.1,0.3+0.45*Math.abs(Math.sin(h/22))).toFixed(2));
+    spw.push(+(7.5+2*Math.sin(h/15)).toFixed(1));
+    wtw.push(+(22.5+1.2*Math.sin(h/40)).toFixed(1));}
+  return parseWx({hourly:{time:t,temperature_2m:temp,precipitation:pr,cloud_cover:cl,wind_speed_10m:ws,wind_direction_10m:wd,weather_code:code}},
+                 {hourly:{time:mt,wave_height:wh,wave_period:wp,wave_direction:wdw,swell_wave_height:shw,swell_wave_period:spw,sea_surface_temperature:wtw}});
+}
+function parseWx(wx,wv){
+  const H=wx.hourly, wave={};
+  if(wv&&wv.hourly){const W=wv.hourly;const g=(a,i)=>a?a[i]:null;
+    W.time.forEach((tt,i)=>wave[tt]={h:g(W.wave_height,i),p:g(W.wave_period,i),d:g(W.wave_direction,i),
+      sh:g(W.swell_wave_height,i),sp:g(W.swell_wave_period,i),wt:g(W.sea_surface_temperature,i)});}
+  const days={};
+  H.time.forEach((iso,i)=>{const dk=iso.slice(0,10);
+    (days[dk]=days[dk]||{all:[]}).all.push({iso,hr:+iso.slice(11,13),
+      temp:H.temperature_2m[i],pr:H.precipitation[i],cl:H.cloud_cover[i],
+      ws:H.wind_speed_10m[i],wdir:H.wind_direction_10m[i],code:H.weather_code[i],
+      wh:wave[iso]?wave[iso].h:null,wp:wave[iso]?wave[iso].p:null,
+      whdir:wave[iso]?wave[iso].d:null,sh:wave[iso]?wave[iso].sh:null,sp:wave[iso]?wave[iso].sp:null,wt:wave[iso]?wave[iso].wt:null});});
+  const keys=Object.keys(days).sort();
+  keys.forEach(k=>{const o=days[k];const temps=o.all.map(r=>r.temp);
+    o.tmax=Math.round(Math.max(...temps)); o.tmin=Math.round(Math.min(...temps));
+    o.rows=o.all.filter(r=>r.hr%3===0).map(r=>{const ws=wSev(r.ws),vs=vSev(r.wh),th=[95,96,99].includes(r.code);
+      return Object.assign({},r,{wsev:ws,vsev:vs,thunder:th,sev:Math.max(ws,vs<0?0:vs,th?3:0),
+        off:(r.wdir>=30&&r.wdir<=150&&r.ws>=3)});});});
+  return {days,keys};
+}
+function wcodeIcon(c){c=(c==null?0:c);
+  if(c===0)return '☀️'; if(c<=2)return '🌤️'; if(c===3)return '☁️';
+  if(c===45||c===48)return '🌫️';
+  if(c>=51&&c<=67)return '🌧️'; if(c>=71&&c<=77)return '🌨️';
+  if(c>=80&&c<=82)return '🌦️'; if(c>=85&&c<=86)return '🌨️'; if(c>=95)return '⛈️';
+  return '☁️';}
+function arrowSVG(wdir,sev){const rot=(wdir+180)%360;
+  return '<svg width="34" height="34" viewBox="0 0 20 20" style="transform:rotate('+rot+'deg)"><path d="M10 1.5 L15.5 17 L10 13 L4.5 17 Z" fill="'+VCOL[sev]+'"/></svg>';}
+function dayTabsHTML(){let h='<div class="wxdays">';
+  WXDATA.keys.forEach((k,i)=>{const d=new Date(k+'T00:00:00'),w=d.getUTCDay(),o=WXDATA.days[k];
+    const cls=['wxday'];if(i===wxDay)cls.push('on');if(w===0)cls.push('sun');if(w===6)cls.push('sat');
+    const t0=todayJST(),off=Math.round((Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-Date.UTC(t0.y,t0.m-1,t0.d))/86400000);
+    const mid=(o.rows&&o.rows.length)?o.rows.reduce((a,b)=>Math.abs(b.hr-12)<Math.abs(a.hr-12)?b:a):null;
+    const ic=wcodeIcon(mid?mid.code:0);
+    h+='<div class="'+cls.join(' ')+'" data-i="'+i+'"><div class="d">'+d.getUTCDate()+'<span style="font-size:11.5px;color:#a2b7c8">日</span></div>'+
+       '<div class="w">'+WK[w]+'</div><div class="wxic">'+ic+'</div>'+
+       '<div><span class="tmax">'+o.tmax+'°</span> <span class="tmin">'+o.tmin+'°</span></div>'+
+       (off===0?'<div class="today">今日</div>':off===-1?'<div class="yst">昨日</div>':'')+'</div>';});
+  return h+'</div>';}
+function arrowHTML(){
+  const cellW=52, SLOT=3*3600000;
+  const flat=[];
+  WXDATA.keys.forEach(k=>{const pk=k.split('-').map(Number);const base=jstMidnight(pk[0],pk[1],pk[2]);
+    WXDATA.days[k].rows.forEach(r=>flat.push(Object.assign({},r,{ms:base+r.hr*3600000,dayKey:k,Y:pk[0],M:pk[1],D:pk[2]})));});
+  flat.sort((a,b)=>a.ms-b.ms);
+  const now=Date.now(), curSlot=Math.floor(now/SLOT)*SLOT;
+  const LEAD=2;                                   // 現在の手前に残すコマ数(6h)
+  const vis=flat.filter(r=>r.ms>=curSlot-LEAD*SLOT);
+  if(!vis.length) return '<div class="wxempty">先の予報データがありません</div>';
+  const startMs=vis[0].ms, width=vis.length*cellW;
+  let cells='',axis='',prevDay=null;
+  vis.forEach(r=>{const ds=(r.dayKey!==prevDay);prevDay=r.dayKey;const dc=ds?' dstart':'';
+    const pc=(r.ms<curSlot)?' past':'';
+    cells+='<div class="cell'+dc+pc+'" style="width:'+cellW+'px">'+arrowSVG(r.wdir,r.wsev)+
+      '<div class="val">'+r.ws.toFixed(1)+'</div><div class="sub">'+wdir16(r.wdir)+'</div></div>';
+    const lab=ds?(r.M+'/'+r.D+'('+WK[new Date(Date.UTC(r.Y,r.M-1,r.D)).getUTCDay()]+')'):String(r.hr).padStart(2,'0');
+    axis+='<div class="axc'+dc+'" style="width:'+cellW+'px">'+lab+'</div>';});
+  const nowX=Math.max(0,((now-startMs)/SLOT)*cellW + cellW/2);   // セル中央基準に合わせる
+  wxVis=vis; wxCellW=cellW; wxNowX=nowX;
+  return '<div class="arrowwrap" id="arrowwrap"><div class="arrowstrip" style="width:'+width+'px">'+
+    '<div class="wxnow" style="left:'+nowX.toFixed(1)+'px"><span class="wxnowlab">今</span></div>'+
+    '<div class="arrowrow">'+cells+'</div><div class="arrowaxis">'+axis+'</div></div></div>'+
+    dayTabsHTML();}
+function waveArrowSVG(dir,col){const rot=(dir+180)%360; col=col||'#6fa8c8';
+  return '<svg width="20" height="20" viewBox="0 0 20 20" style="transform:rotate('+rot+'deg)"><path d="M10 2 L14 15 L10 12 L6 15 Z" fill="'+col+'"/></svg>';}
+function waveHTML(){
+  const cellW=52, SLOT=3*3600000;
+  const flat=[];
+  WXDATA.keys.forEach(k=>{const pk=k.split('-').map(Number);const base=jstMidnight(pk[0],pk[1],pk[2]);
+    WXDATA.days[k].rows.forEach(r=>flat.push(Object.assign({},r,{ms:base+r.hr*3600000,dayKey:k,Y:pk[0],M:pk[1],D:pk[2]})));});
+  flat.sort((a,b)=>a.ms-b.ms);
+  const now=Date.now(), curSlot=Math.floor(now/SLOT)*SLOT, LEAD=2;
+  const vis=flat.filter(r=>r.ms>=curSlot-LEAD*SLOT);
+  if(!vis.length) return '<div class="wxempty">先の予報データがありません</div>';
+  const startMs=vis[0].ms, width=vis.length*cellW;
+  let cells='',axis='',prevDay=null;
+  vis.forEach(r=>{const ds=(r.dayKey!==prevDay);prevDay=r.dayKey;const dc=ds?' dstart':'';const pc=(r.ms<curSlot)?' past':'';
+    const whCm=r.wh!=null?((r.wh*100)|0):null;
+    cells+='<div class="cell wc'+dc+pc+'" style="width:'+cellW+'px">'+
+      '<div class="wcp">'+(r.wp!=null?r.wp.toFixed(1):'–')+'</div>'+
+      (r.whdir!=null?waveArrowSVG(r.whdir,(r.vsev<0?'#8199ac':VCOL[r.vsev])):'<div class="wcar">–</div>')+
+      '<div class="wch" style="color:'+(r.vsev<0?'#8199ac':VCOL[r.vsev])+'">'+(whCm!=null?whCm:'–')+'</div>'+
+      '<div class="wcs">'+(r.sh!=null?'う'+((r.sh*100)|0):'')+'</div>'+
+      '<div class="wct">'+(r.wt!=null?Math.round(r.wt)+'°':'')+'</div></div>';
+    const lab=ds?(r.M+'/'+r.D+'('+WK[new Date(Date.UTC(r.Y,r.M-1,r.D)).getUTCDay()]+')'):String(r.hr).padStart(2,'0');
+    axis+='<div class="axc'+dc+'" style="width:'+cellW+'px">'+lab+'</div>';});
+  const nowX=Math.max(0,((now-startMs)/SLOT)*cellW + cellW/2);   // セル中央基準に合わせる
+  wxVis=vis; wxCellW=cellW; wxNowX=nowX;
+  return '<div class="wavekey">周期(秒)／波向き／<b>波高cm</b>／う=うねりcm／水温</div>'+
+    '<div class="arrowwrap" id="arrowwrap"><div class="arrowstrip" style="width:'+width+'px">'+
+    '<div class="wxnow" style="left:'+nowX.toFixed(1)+'px"><span class="wxnowlab">今</span></div>'+
+    '<div class="arrowrow">'+cells+'</div><div class="arrowaxis">'+axis+'</div></div></div>'+
+    dayTabsHTML();}
+function wireArrowScroll(){
+  const w=document.getElementById('arrowwrap'); if(!w||!wxVis.length)return;
+  const tabs=document.querySelectorAll('.wxday');
+  const firstIdx={}; wxVis.forEach((r,i)=>{if(firstIdx[r.dayKey]===undefined)firstIdx[r.dayKey]=i;});
+  tabs.forEach(t=>{const key=WXDATA.keys[+t.dataset.i];
+    t.onclick=()=>{const fi=firstIdx[key]; if(fi!==undefined) w.scrollTo({left:fi*wxCellW,behavior:'smooth'});};});
+  const upd=()=>{let i=Math.round(w.scrollLeft/wxCellW);i=Math.max(0,Math.min(wxVis.length-1,i));
+    const key=wxVis[i].dayKey; tabs.forEach(t=>t.classList.toggle('on',WXDATA.keys[+t.dataset.i]===key));};
+  // 初期表示：現在バーを左端べったりでなく少し内側へ
+  w.scrollLeft=Math.max(0, wxNowX-90);
+  w.addEventListener('scroll',upd,{passive:true}); upd();
+  // 潮位グラフと同じ「掴んで流す」ドラッグ操作
+  let dg=false,dc=false,hz=false,sx=0,sy=0,ss=0;
+  w.addEventListener('pointerdown',e=>{dg=true;dc=false;hz=false;sx=e.clientX;sy=e.clientY;ss=w.scrollLeft;});
+  w.addEventListener('pointermove',e=>{if(!dg)return;const dx=e.clientX-sx,dy=e.clientY-sy;
+    if(!dc){ if(Math.abs(dx)>6||Math.abs(dy)>6){dc=true;hz=Math.abs(dx)>Math.abs(dy);
+      if(hz){w.classList.add('drag');w.setPointerCapture(e.pointerId);}} }
+    if(dc&&hz){e.preventDefault();w.scrollLeft=ss-dx;}});
+  const endd=()=>{if(!dg)return;dg=false;w.classList.remove('drag');};
+  w.addEventListener('pointerup',endd);w.addEventListener('pointercancel',endd);
+  const nb=document.getElementById('wxnowbtn');
+  if(nb){nb.onclick=()=>{const target=Math.max(0,wxNowX-90);
+    try{w.scrollTo({left:target,behavior:'smooth'});}catch(_){}
+    w.scrollLeft=target; upd();};}
+}
+function tableHTML(){const rows=WXDATA.days[WXDATA.keys[wxDay]].rows;
+  const _t0=todayJST();const _tk=_t0.y+'-'+String(_t0.m).padStart(2,'0')+'-'+String(_t0.d).padStart(2,'0');
+  const _isToday=(WXDATA.keys[wxDay]===_tk);
+  const _curSlot=Math.floor(new Date(Date.now()+9*3600000).getUTCHours()/3)*3;
+  let h='<table class="jt"><colgroup><col style="width:11%"><col style="width:12%"><col style="width:15%"><col style="width:16%"><col style="width:23%"><col style="width:11%"><col style="width:12%"></colgroup><thead><tr><th style="text-align:left;padding-left:10px">時刻</th><th>気温</th><th>降水</th><th>雲</th><th style="text-align:left">風</th><th style="text-align:left">波</th><th>判定</th></tr></thead><tbody>';
+  rows.forEach(r=>{const jr=VCOL[r.sev];const wvC=r.vsev<0?'#8199ac':VCOL[r.vsev];
+    const prW=Math.min((r.pr/8)*100,100), clW=(r.cl!=null?(r.cl|0):0);
+    const _isNow=_isToday&&r.hr===_curSlot;
+    h+='<tr class="'+(_isNow?'jnow':'')+'" style="background:'+VBG[r.sev]+'">'+
+      '<td class="jtime num" style="--jr:'+jr+'">'+String(r.hr).padStart(2,'0')+'時'+(_isNow?'<span class="jnowtag">今</span>':'')+'</td>'+
+      '<td class="num">'+r.temp.toFixed(1)+'°</td>'+
+      '<td class="jbar"><div class="bv num">'+r.pr.toFixed(1)+'<span class="jsub">mm</span></div><div class="bar"><i style="width:'+prW.toFixed(0)+'%;background:#2f8fd4"></i></div></td>'+
+      '<td class="jbar"><div class="bv"><span class="wxic2">'+wcodeIcon(r.code)+'</span> <span class="num">'+clW+'<span class="jsub">%</span></span></div><div class="bar"><i style="width:'+clW+'%;background:#5f7688"></i></div></td>'+
+      '<td class="jwindc">'+arrowSVG(r.wdir,r.wsev)+'<span class="jwind" style="color:'+VCOL[r.wsev]+'">'+r.ws.toFixed(1)+'</span><span class="jsub"> m/s '+wdir16(r.wdir)+'</span>'+(r.off?' <span class="off">沖出し</span>':'')+'</td>'+
+      '<td>'+(r.wh!=null?'<span class="jwave" style="color:'+wvC+'">'+((r.wh*100)|0)+'</span><span class="jsub">cm</span>':'<span class="jsub">—</span>')+'</td>'+
+      '<td style="text-align:center"><span class="chip" style="color:'+VCOL[r.sev]+';background:'+VBG[r.sev]+'">'+SYMB[r.sev]+(r.thunder?'⚡':'')+'</span></td></tr>';});
+  h+='</tbody></table><div class="jtlegend">判定＝風と波のワースト側（雷は⚡で×上書き）。風:〜3◎/〜5○/〜8△/8以上× m/s、波:〜50◎/〜100○/〜150△/150以上× cm。沖出し＝陸から沖への風向。</div>';
+  return h;}
+function wxRender(){
+  if(!WXDATA)return;
+  document.getElementById('wxtitle').innerHTML='天気予報・近況 <small>（'+(wxView==='arrow'?'風':wxView==='wave'?'波浪':'判定')+'）</small>'+(WXSAMPLE?'<span class="wxdemo">サンプル</span>':'')+(WXOFFLINE?'<span class="wxoff">オフライン '+fmtCacheT(WXCACHET)+'取得</span>':'');
+  document.getElementById('wxbody').innerHTML=(wxView==='arrow'?arrowHTML():(tableHTML()+dayTabsHTML()));
+  document.querySelectorAll('#wxmenu button').forEach(b=>b.classList.toggle('on',b.dataset.v===wxView));
+  { const nb=document.getElementById('wxnowbtn'); if(nb) nb.hidden=(wxView!=='arrow'); }
+  if(wxView==='table') document.querySelectorAll('.wxday').forEach(el=>el.onclick=()=>{wxDay=+el.dataset.i;wxRender();});
+  if(wxView==='arrow') wireArrowScroll();
+  document.getElementById('wxsrc').textContent=(WXSAMPLE?'サンプル表示（この枠は通信不可）。ブラウザで開くと実データ。':'出典：Open-Meteo')+' ／ '+POINT.name;
+}
+document.querySelectorAll('#wxmenu button').forEach(b=>b.onclick=()=>{wxView=b.dataset.v;wxRender();});
+
+function wavDayTabs(){let h='<div class="wavdays">';
+  WXDATA.keys.forEach((k,i)=>{const d=new Date(k+'T00:00:00'),w=d.getUTCDay(),o=WXDATA.days[k];
+    const cls=['wavday'];if(i===wavDay)cls.push('on');if(w===0)cls.push('sun');if(w===6)cls.push('sat');
+    const t0=todayJST(),off=Math.round((Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-Date.UTC(t0.y,t0.m-1,t0.d))/86400000);
+    h+='<div class="'+cls.join(' ')+'" data-i="'+i+'"><div class="d">'+(d.getUTCMonth()+1)+'/'+d.getUTCDate()+'</div>'+
+       '<div class="w">'+WK[w]+'</div>'+(off===0?'<div class="today">今日</div>':off===-1?'<div class="yst">昨日</div>':'')+'</div>';});
+  return h+'</div>';}
+function renderWav(){
+  if(!WXDATA){return;}
+  const key=WXDATA.keys[wavDay], rows=WXDATA.days[key].rows;
+  const cellW=Math.max(40, Math.min(60, Math.floor((360)/rows.length)));  // 収まる幅
+  const W=rows.length*cellW;
+  // 時間軸
+  let axis='';rows.forEach(r=>{axis+='<div class="ax">'+String(r.hr).padStart(2,'0')+'</div>';});
+  // 周期＝波の間隔、波高＝波の高さ、で"海の波の絵"を描く（白波付き）
+  const HW=52, baseY=44;                          // 行高・海面下端
+  const perAt=x=>{const f=x/cellW-0.5; let i=Math.floor(f); i=Math.max(0,Math.min(rows.length-2,i));
+    const a=rows[i]&&rows[i].wp!=null?rows[i].wp:6, b=rows[i+1]&&rows[i+1].wp!=null?rows[i+1].wp:a;
+    const t=Math.max(0,Math.min(1,f-i)); return a+(b-a)*t;};
+  const whAt=x=>{const f=x/cellW-0.5; let i=Math.floor(f); i=Math.max(0,Math.min(rows.length-2,i));
+    const a=rows[i]&&rows[i].wh!=null?rows[i].wh:0.4, b=rows[i+1]&&rows[i+1].wh!=null?rows[i+1].wh:a;
+    const t=Math.max(0,Math.min(1,f-i)); return a+(b-a)*t;};
+  // 位相・振幅・波頭位置を計算
+  let top='M 0 '+baseY, phase=0; const step=2, kBase=2.2;
+  const crests=[]; let prevY=baseY, prevSlope=0;
+  const yAt=x=>{const per=perAt(Math.min(x,W-1)); const wh=whAt(Math.min(x,W-1));
+    const amp=Math.max(3,Math.min(20, wh*100*0.13));   // 波高cm→振幅px
+    return {y:baseY-8-amp - amp*Math.sin(phase), amp};};
+  let pts=[];
+  for(let x=0;x<=W;x+=step){const per=perAt(Math.min(x,W-1)); phase+=step*(kBase/per);
+    const wh=whAt(Math.min(x,W-1)); const amp=Math.max(3,Math.min(20, wh*100*0.13));
+    const y=baseY-9-amp - amp*Math.sin(phase);
+    pts.push([x,y,amp,Math.cos(phase)]);
+    top+=' L '+x.toFixed(1)+' '+y.toFixed(1);}
+  const fillPath=top+' L '+W+' '+baseY+' L 0 '+baseY+' Z';
+  // 波高の判定色（◎<50 / ○<100 / △<150 / ×）で時間ごとに塗り分け
+  const _wcol=['#38c46f','#2f9bd4','#e3a72c','#e05138'];
+  const _sevOf=cm=>cm<50?0:cm<100?1:cm<150?2:3;
+  let _stops='';
+  rows.forEach((r,i)=>{const cm=r.wh!=null?r.wh*100:0;const c=_wcol[_sevOf(cm)];
+    const o0=(i/rows.length*100).toFixed(1), o1=((i+1)/rows.length*100).toFixed(1);
+    _stops+='<stop offset="'+o0+'%" stop-color="'+c+'"/><stop offset="'+o1+'%" stop-color="'+c+'"/>';});
+  // 白波：カヤック判断の目安。波高50cm未満は白波ゼロ、50/100/150cmの判定しきい値に連動して増える
+  let foam='';
+  for(let i=1;i<pts.length;i++){const [x,y,amp,c0]=pts[i], c1=pts[i-1][3];
+    if(c1>0&&c0<=0){ // 波頭
+      const whCm=whAt(Math.min(x,W-1))*100;
+      if(whCm<50) continue;                         // 50cm未満＝白波なし（ベタ凪〜緩い波）
+      // 50→泡1個、100→約4個、150→約7個、と判定域に沿って増加
+      const n=Math.max(1, Math.round((whCm-50)/17)+1);
+      for(let k=0;k<n;k++){const fx=x-6+Math.random()*12, fy=y-2+Math.random()*4, r=0.8+Math.random()*1.4;
+        foam+='<circle cx="'+fx.toFixed(1)+'" cy="'+fy.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="#ffffff" opacity="0.92"/>';}
+      foam+='<path d="M '+(x-5)+' '+(y+1)+' Q '+x+' '+(y-3)+' '+(x+5)+' '+(y+1)+'" stroke="#ffffff" stroke-width="1.4" fill="none" opacity="0.9"/>';}}
+  // 値ラベル（各セル上に周期）
+  let plabels='';rows.forEach((r,i)=>{if(r.wp!=null){const x=i*cellW+cellW/2;
+    plabels+='<text x="'+x+'" y="9" fill="#9fc0d6" font-size="9" text-anchor="middle">'+r.wp.toFixed(1)+'s</text>';}});
+  const periodRow='<div class="wavrow period" style="height:'+HW+'px"><svg width="100%" height="'+HW+'" viewBox="0 0 '+W+' '+HW+'" preserveAspectRatio="none" style="display:block">'+
+    '<defs><linearGradient id="wgrad" x1="0" y1="0" x2="1" y2="0">'+_stops+'</linearGradient></defs>'+
+    '<path d="'+fillPath+'" fill="url(#wgrad)" opacity="0.9"/>'+
+    '<path d="'+top+'" fill="none" stroke="#eaf7ff" stroke-width="1.4" opacity="0.85"/>'+
+    foam+plabels+'</svg></div>';
+  // 波高＋波向き矢印＋方位（波が進む向き）
+  let wh='';rows.forEach(r=>{const cm=r.wh!=null?((r.wh*100)|0):null;const col=r.vsev<0?'#8199ac':VCOL[r.vsev];
+    const dirTxt=r.whdir!=null?wdir16((r.whdir+180)%360):'';   // 波が進む向きの方位
+    wh+='<div class="c"><span class="n" style="color:'+col+'">'+(cm!=null?cm:'–')+'</span>'+
+      (r.whdir!=null?waveArrowSVG(r.whdir,col):'')+'<span class="wdirtxt" style="color:'+col+'">'+dirTxt+'</span></div>';});
+  // うねり
+  let sw='';rows.forEach(r=>{sw+='<div class="c">'+(r.sh!=null?((r.sh*100)|0):'–')+'</div>';});
+  // 水温
+  let wt='';rows.forEach(r=>{wt+='<div class="c">'+(r.wt!=null?Math.round(r.wt)+'°':'–')+'</div>';});
+  // 現在線（今日のみ）
+  let nowl='';const t0=todayJST();const isToday=key===(t0.y+'-'+String(t0.m).padStart(2,'0')+'-'+String(t0.d).padStart(2,'0'));
+  if(isToday){const now=new Date(Date.now()+9*3600000);const hh=now.getUTCHours()+now.getUTCMinutes()/60;
+    const xp=((hh/3+0.5)/rows.length)*100; if(xp>=0&&xp<=100)nowl='<div class="wavnowl" style="left:'+xp.toFixed(2)+'%"></div>';}
+
+  document.getElementById('wavttl').textContent='（'+(WXDATA.keys[wavDay].slice(5).replace('-','/'))+'）';
+  const dm=document.getElementById('wavdemo'); if(dm) dm.hidden=!WXSAMPLE;
+  document.getElementById('wavbody').innerHTML=
+    '<div class="wavgrid"><div class="wavlabels"><div class="sp"></div>'+
+      '<div class="lb" style="height:52px">周期<br>(秒)</div><div class="lb">波高(cm)<br><span style="font-size:11px;color:#7c96a8">↑波の進む向き</span></div><div class="lb">うねり<br>(cm)</div><div class="lb">水温<br>(℃)</div></div>'+
+    '<div class="wavscroll" id="wavscroll"><div style="width:100%;position:relative">'+nowl+
+      '<div class="wavaxis">'+axis+'</div>'+periodRow+
+      '<div class="wavrow waveh">'+wh+'</div>'+
+      '<div class="wavrow swell">'+sw+'</div>'+
+      '<div class="wavrow wtemp">'+wt+'</div>'+
+    '</div></div></div>'+ wavDayTabs();
+  document.getElementById('wavsrc').textContent=(WXOFFLINE?'オフライン表示（'+fmtCacheT(WXCACHET)+'取得）':(WXSAMPLE?'サンプル表示（ブラウザで実データ）':'出典：Open-Meteo Marine'))+' ／ '+POINT.name;
+  document.querySelectorAll('.wavday').forEach(el=>el.onclick=()=>{wavDay=+el.dataset.i;renderWav();});
+  // 横ドラッグ
+  const sc=document.getElementById('wavscroll');
+  if(sc){let dg=false,dc=false,hz=false,sx=0,sy=0,ss=0;
+    sc.addEventListener('pointerdown',e=>{dg=true;dc=false;hz=false;sx=e.clientX;sy=e.clientY;ss=sc.scrollLeft;});
+    sc.addEventListener('pointermove',e=>{if(!dg)return;const dx=e.clientX-sx,dy=e.clientY-sy;
+      if(!dc&&(Math.abs(dx)>6||Math.abs(dy)>6)){dc=true;hz=Math.abs(dx)>Math.abs(dy);if(hz){sc.classList.add('drag');sc.setPointerCapture(e.pointerId);}}
+      if(dc&&hz){e.preventDefault();sc.scrollLeft=ss-dx;}});
+    const ed=()=>{if(!dg)return;dg=false;sc.classList.remove('drag');};
+    sc.addEventListener('pointerup',ed);sc.addEventListener('pointercancel',ed);}
+}
+
+function todayIdx(){if(!WXDATA)return 0;const t=todayJST();
+  const k=t.y+'-'+String(t.m).padStart(2,'0')+'-'+String(t.d).padStart(2,'0');
+  const i=WXDATA.keys.indexOf(k);return i<0?0:i;}
+// ===== オフライン・キャッシュ =====
+let WXOFFLINE=false, WXCACHET=0, WARNOFFLINE=false, WARNCACHET=0;
+function _pad2(n){return String(n).padStart(2,'0');}
+function fmtCacheT(ms){const j=new Date(ms+9*3600000);return (j.getUTCMonth()+1)+'/'+j.getUTCDate()+' '+_pad2(j.getUTCHours())+':'+_pad2(j.getUTCMinutes());}
+function wxCacheKey(){return 'ikacache_wx_v1_'+POINT.lat.toFixed(4)+'_'+POINT.lon.toFixed(4);}
+function saveWxCache(d){try{localStorage.setItem(wxCacheKey(),JSON.stringify({t:Date.now(),d:d}));}catch(e){}}
+function loadWxCache(){try{const r=localStorage.getItem(wxCacheKey());if(r){const o=JSON.parse(r);if(o&&o.d&&o.d.keys)return o;}}catch(e){}return null;}
+function warnCacheKey(){return 'ikacache_warn_v1_420000';}
+function saveWarnCache(items,info){try{localStorage.setItem(warnCacheKey(),JSON.stringify({t:Date.now(),items:items,info:info}));}catch(e){}}
+function loadWarnCache(){try{const r=localStorage.getItem(warnCacheKey());if(r)return JSON.parse(r);}catch(e){}return null;}
+function wxGo(){wxLive().then(d=>{WXSAMPLE=false;WXOFFLINE=false;WXDATA=d;saveWxCache(d);wxDay=todayIdx();wavDay=todayIdx();wxRender();renderWav();})
+  .catch(()=>{const c=loadWxCache();
+    if(c){WXSAMPLE=false;WXOFFLINE=true;WXCACHET=c.t;WXDATA=c.d;wxDay=todayIdx();wavDay=todayIdx();wxRender();renderWav();}
+    else{WXSAMPLE=true;WXOFFLINE=false;WXDATA=wxSample();wxDay=todayIdx();wavDay=todayIdx();wxRender();renderWav();}});}
+// ===== 気象庁 警報・注意報（bosai JSON・西海市） =====
+const WARN_MAP={
+ '02':['暴風雪','alarm'],'03':['大雨','alarm'],'04':['洪水','alarm'],'05':['暴風','alarm'],
+ '06':['大雪','alarm'],'07':['波浪','alarm'],'08':['高潮','alarm'],
+ '10':['大雨','warn'],'12':['大雪','warn'],'13':['風雪','warn'],'14':['雷','warn'],
+ '15':['強風','warn'],'16':['波浪','warn'],'17':['融雪','warn'],'18':['洪水','warn'],
+ '19':['高潮','warn'],'20':['濃霧','warn'],'21':['乾燥','warn'],'22':['なだれ','warn'],
+ '23':['低温','warn'],'24':['着氷','warn'],'25':['着雪','warn'],'26':['その他','warn'],
+ '32':['暴風雪','emg'],'33':['大雨','emg'],'35':['暴風','emg'],'36':['大雪','emg'],
+ '37':['波浪','emg'],'38':['高潮','emg']
+};
+function renderAlert(items,isSample,offT){
+  const bar=document.getElementById('alertbar'); if(!bar)return;
+  let h='<span class="ttl">気象注意報・警報</span>';
+  if(!items.length){h+='<span class="none">発表なし</span>';}
+  else items.forEach(it=>{const suf=it.lv==='emg'?'特別警報':it.lv==='alarm'?'警報':'';
+    h+='<span class="alert-tag lv-'+it.lv+'">'+it.name+suf+'</span>';});
+  if(isSample)h+='<span class="demoflag">サンプル</span>';
+  h+='<span class="src">'+(offT?'オフライン '+fmtCacheT(offT)+'取得':'西海市 ／ 気象庁')+'</span>';
+  bar.innerHTML=h;
+}
+function warnSample(){return [{name:'雷',lv:'warn'},{name:'強風',lv:'warn'}];}
+function renderAlertText(info,isSample,offT){
+  const el=document.getElementById('alerttext'); if(!el)return;
+  const body=(info&&info.headline||'').trim();
+  if(!body){el.className='alerttext empty';el.innerHTML='';return;}
+  const dt=info.datetime?info.datetime.replace('T',' ').replace(/:\d\d\+09:00$/,'').replace('+09:00',''):'';
+  el.className='alerttext';
+  el.innerHTML='<div class="off">'+(info.office||'気象台')+(isSample?' <span style=\'font-size:11px;color:#e7c088\'>（サンプル）</span>':'')+'</div>'+
+    (dt?'<div class="dt">'+dt+' 発表</div>':'')+
+    '<div class="body">'+body+'</div>'+
+    '<span class="src">'+(offT?'オフライン表示（'+fmtCacheT(offT)+'取得）':'出典：気象庁ホームページ ／ 西海市')+'</span>';
+}
+function warnTextSample(){return {office:'長崎地方気象台',datetime:'',
+  headline:'長崎県では、強風や竜巻などの激しい突風、落雷に注意してください。（サンプル表示：ブラウザで開くと実際の見出し文）'};}
+function warnGo(){
+  fetch('https://www.jma.go.jp/bosai/warning/data/warning/420000.json')
+    .then(r=>r.json()).then(j=>{
+      let ws=[];
+      (j.areaTypes||[]).forEach(at=>(at.areas||[]).forEach(a=>{
+        if(String(a.code).indexOf('42212')===0){(a.warnings||[]).forEach(w=>{
+          if(w.code==='00')return; if(String(w.status||'').indexOf('解除')>=0)return;
+          const m=WARN_MAP[w.code]; if(m)ws.push({name:m[0],lv:m[1]});});}
+      }));
+      const seen={}; ws=ws.filter(x=>{const k=x.name+x.lv;return seen[k]?false:(seen[k]=1,true);});
+      // 重要度順（特別警報→警報→注意報）
+      const rank={emg:0,alarm:1,warn:2}; ws.sort((a,b)=>rank[a.lv]-rank[b.lv]);
+      const _info={office:j.publishingOffice,datetime:j.reportDatetime,headline:j.headlineText};
+      renderAlert(ws,false);
+      renderAlertText(_info,false);
+      saveWarnCache(ws,_info);
+    }).catch(()=>{const c=loadWarnCache();
+      if(c){renderAlert(c.items||[],false,c.t);renderAlertText(c.info||{},false,c.t);}
+      else{renderAlert(warnSample(),true);renderAlertText(warnTextSample(),true);}});
+}
+wxGo(); warnGo(); setInterval(warnGo,600000);
+
+
+
+// ===== 風レイヤー（Windy iframe・配置確認用） =====
+(function(){
+  let wlat=POINT.lat, wlon=POINT.lon;
+  {const wn=document.getElementById("windname"); if(wn) wn.textContent=POINT.name;}
+  function buildWindy(){
+    const p=new URLSearchParams({lat:wlat,lon:wlon,detailLat:wlat,detailLon:wlon,zoom:'12',level:'surface',
+      overlay:'wind',menu:'',message:'true',marker:'true',calendar:'now',pressure:'',type:'map',
+      location:'coordinates',detail:'true',metricWind:'m/s',metricTemp:'°C',radarRange:'-1'});
+    const f=document.getElementById('windy'); if(f) f.src='https://embed.windy.com/embed2.html?'+p.toString();}
+  document.querySelectorAll('#windspots button').forEach(b=>b.onclick=()=>{wlat=b.dataset.lat;wlon=b.dataset.lon;
+    document.querySelectorAll('#windspots button').forEach(x=>x.classList.toggle('on',x===b));buildWindy();});
+  buildWindy();
+})();
+</script>
+</body>
+</html>

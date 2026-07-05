@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#0c1620"/>
+  <rect x="16" y="16" width="480" height="480" rx="84" fill="#0f1c28"/>
+  <!-- 月 -->
+  <circle cx="372" cy="140" r="46" fill="#e9edb0" opacity="0.9"/>
+  <circle cx="392" cy="128" r="40" fill="#0f1c28"/>
+  <!-- イカ -->
+  <g fill="#38b6f0">
+    <path d="M256 150 C300 150 330 188 330 236 L330 300 C330 316 314 322 306 308 L296 290 C292 300 286 300 282 290 L272 306 C267 316 256 316 251 306 L241 290 C237 300 231 300 227 290 L217 308 C209 322 193 316 193 300 L193 236 C193 188 213 150 256 150 Z"/>
+    <ellipse cx="230" cy="228" rx="12" ry="16" fill="#0f1c28"/>
+    <ellipse cx="282" cy="228" rx="12" ry="16" fill="#0f1c28"/>
+    <!-- ヒレ -->
+    <path d="M330 190 C356 196 356 232 330 244 Z"/>
+    <path d="M182 190 C156 196 156 232 182 244 Z"/>
+    <!-- 触腕 -->
+    <path d="M236 300 C232 340 224 360 214 384" stroke="#38b6f0" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M276 300 C280 340 288 360 298 384" stroke="#38b6f0" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M256 306 L256 396" stroke="#38b6f0" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <!-- 波 -->
+  <path d="M40 400 Q100 372 160 400 T280 400 T400 400 T520 400 L520 520 L0 520 L0 400 Q20 400 40 400 Z" fill="#1c5f8c"/>
+  <path d="M40 430 Q100 404 160 430 T280 430 T400 430 T520 430 L520 520 L0 520 L0 430 Q20 430 40 430 Z" fill="#2f9bd4" opacity="0.85"/>
+</svg>

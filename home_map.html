@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c1620">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="海況">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<script>
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+}
+</script>
+<title>お気に入り登録（OpenStreetMap・キー不要）</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+  :root{--bg:#0c1620;--ink:#eef4f9;--mut:#a2b7c8;--rule:#2c6f8c;--card:#14212e;--line:#22384a;--acc:#38b6f0}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif}
+  body{max-width:760px;margin:0 auto;padding-bottom:30px}
+  header{padding:14px 16px 10px;background:linear-gradient(180deg,#1a5b86,#123047);border-bottom:1px solid var(--rule)}
+  header h1{margin:0;font-size:21px}
+  header .s{font-size:14px;color:#cfe6f5;margin-top:4px}
+
+  .mapwrap{position:relative;margin:12px 12px 0;border-radius:14px;overflow:hidden;border:1px solid var(--line);height:800px;background:#071019}
+  #map{position:absolute;inset:0}
+  #cmap{position:absolute;inset:0;display:none}
+  .maptag{position:absolute;left:10px;top:10px;z-index:5;background:rgba(8,16,24,.7);border:1px solid var(--rule);
+    border-radius:8px;padding:6px 12px;font-size:13.5px;color:#cfe0ec}
+  .hintpin{position:absolute;left:0;right:0;bottom:10px;z-index:5;text-align:center;pointer-events:none}
+  .hintpin span{background:rgba(8,16,24,.78);border:1px solid var(--rule);border-radius:999px;padding:9px 18px;font-size:14.5px}
+
+  .modal{position:fixed;inset:0;background:rgba(4,8,12,.72);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.show{display:flex}
+  .card{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:18px;width:100%;max-width:340px}
+  .card h3{margin:0 0 6px;font-size:18px}
+  .card .co{font-size:14px;color:var(--mut);margin-bottom:14px}
+  .card input{width:100%;background:#0b1620;border:1px solid var(--line);color:var(--ink);border-radius:9px;
+    padding:11px 12px;font-size:15px;margin-bottom:14px}
+  .card .row{display:flex;gap:8px}
+  .card button{flex:1;border-radius:9px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;border:1px solid var(--rule)}
+  .card .save{background:var(--acc);color:#04121c;border-color:var(--acc)}
+  .card .cancel{background:transparent;color:var(--mut)}
+
+  .favhd{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 6px}
+  .favhd .t{font-size:15px;color:var(--mut);font-weight:700;letter-spacing:.06em}
+  .add{background:var(--acc);color:#04121c;border:0;border-radius:999px;width:34px;height:34px;font-size:20px;font-weight:700;cursor:pointer;line-height:1}
+  .fav{margin:0 12px 8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    display:flex;align-items:center;gap:12px;cursor:pointer}
+  .fav:active{background:#0e2a3d}
+  .fav .pin{color:#5f9bc0;font-size:20px}
+  .fav .nm{font-size:18.5px;font-weight:700}
+  .fav .co{font-size:13px;color:var(--mut);margin-top:3px}
+  .fav .go{margin-left:auto;color:var(--mut);font-size:20px}
+  .fav .edit{margin-left:auto;background:transparent;border:0;color:#7fb0cc;font-size:16px;cursor:pointer;padding:6px 8px;border-radius:8px}
+  .fav .edit:active{background:#0e2a3d}
+  .fav .del{margin-left:6px;color:#7a5a5a;font-size:16px;background:none;border:0;cursor:pointer}
+  .empty{margin:0 12px;text-align:center;padding:26px;color:var(--mut);font-size:15px;line-height:1.7}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#0e2a3d;border:1px solid var(--rule);
+    color:#cfe8f5;padding:12px 20px;border-radius:999px;font-size:15px;z-index:60;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+  .note{margin:10px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px;color:#a2b7c8;font-size:13px;line-height:1.8}
+  .note b{color:#a8c0d2}
+  .mxwrap{margin:12px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .mxhd{padding:12px 14px;font-size:16px;font-weight:700;color:#dce9f3;border-bottom:1px solid var(--line)}
+  .mxsample{font-size:11px;color:#e7c088;border:1px solid #7a5b2f;border-radius:5px;padding:1px 6px;margin-left:8px;font-weight:600}
+  .mxempty{padding:24px;text-align:center;color:var(--mut);font-size:15px;line-height:1.7}
+  .mx{width:100%;border-collapse:collapse;font-size:15px;table-layout:fixed}
+  .mx th,.mx td{text-align:center;padding:10px 2px;border-bottom:1px solid #1a2b3a}
+  .mx thead th{color:#b3c6d5;font-size:13px;font-weight:700;line-height:1.3}
+  .mx thead th .mn{font-size:19px;display:block;margin-top:3px}
+  .mx thead th .tp{display:block;font-size:12px;font-weight:700;margin-top:2px}
+  .mx thead th .trg{display:block;font-size:12px;font-weight:700;margin-top:1px}
+  .mx thead th .trg .u{font-size:8px;color:var(--mut);margin-left:1px;font-weight:400}
+  .mx thead th .moontap{cursor:pointer}
+  .mx .pncol{width:27%}
+  .mx .pn{text-align:left;padding-left:10px;font-size:15px;font-weight:700;color:#eef4f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .mx td.cell{font-size:22px;font-weight:800;cursor:pointer}
+  .mx tbody tr:active{background:#0e2a3d}
+  .mxleg{padding:10px 12px 13px;font-size:12.5px;color:var(--mut);line-height:1.7} .mxleg b{color:#cfe0ec}
+  #mappanel{display:none}
+  body.mapmode #mappanel{display:block}
+  body.mapmode .mxwrap, body.mapmode .favhd, body.mapmode #favlist, body.mapmode .note{display:none}
+  .mphd{display:flex;align-items:center;gap:10px;padding:12px 12px 6px}
+  .mpback{background:var(--card);border:1px solid var(--rule);color:var(--ink);border-radius:9px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer}
+  .mpttl{font-size:14px;color:#cfe0ec;font-weight:700}
+  .add{position:relative}
+</style>
+</head>
+<body>
+<header>
+  <h1>お気に入り登録</h1>
+  <div class="s">OpenStreetMap ／ キー不要・カード不要・完全無料</div>
+</header>
+
+<div id="mappanel">
+  <div class="mphd"><button class="mpback" id="mpback">‹ 戻る</button><span class="mpttl">地図を長押しして登録</span></div>
+  <div class="mapwrap">
+    <div id="map"></div>
+    <canvas id="cmap"></canvas>
+    <div class="maptag" id="maptag">地図を読み込み中…</div>
+    <div class="hintpin"><span>地図を長押ししてピンを落とす</span></div>
+  </div>
+</div>
+
+<div class="mxwrap">
+  <div class="mxhd">今週の狙い目（カヤック＆夜イカ）<span class="mxsample" id="mxsample" hidden>サンプル</span></div>
+  <div id="matrix"><div class="mxempty">お気に入りを登録すると一覧が出ます</div></div>
+  <div class="mxleg">各マス＝その日の<b>終日ベスト海況</b>（昼＝カヤック／夜＝イカ）。◎出せる ○快適上限 △経験者向け ×中止。月＝夜の明るさ（🌑闇〜🌕満月）／大潮・中潮・小潮＝潮回り。マスをタップで詳細へ</div>
+</div>
+
+<div class="favhd">
+  <div class="t">お気に入り</div>
+  <button class="add" id="add" title="地図から新規登録">＋</button>
+</div>
+<div id="favlist"></div>
+
+<div class="note">
+  ブラウザで開くと<b>本物のOpenStreetMap</b>が表示されます（この枠ではタイルを読み込めないため<b>簡易地図に自動切替</b>、操作は同じ）。
+  地図タップ→<b>名前を自由入力</b>→保存でお気に入りに追加。ポイントを押すと詳細画面へ。
+  ※この試作の保存はメモリ内（本番アプリでは端末に永続保存）。
+</div>
+
+<div class="modal" id="modal">
+  <div class="card">
+    <h3>ポイントを登録</h3>
+    <div class="co" id="mco">—</div>
+    <input id="nameInput" type="text" placeholder="名前を入力（例：崎戸ウオーターデッキ）" maxlength="40">
+    <div class="row">
+      <button class="cancel" id="cancel">キャンセル</button>
+      <button class="save" id="save">保存</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const CENTER={lat:33.0402,lon:129.5885};   // 太田尾漁港あたり
+const BBOX={n:33.11,s:32.97,w:129.48,e:129.67};   // 簡易地図の座標範囲（西海・大島周辺）
+const FAV_KEY='ikafav_points_v1';
+const FAV_DEFAULT=[
+  {name:'崎戸ウオーターデッキ',lat:33.0206,lon:129.5637},
+  {name:'太田尾',lat:33.0397,lon:129.5906},
+];
+function loadFavs(){
+  try{const raw=localStorage.getItem(FAV_KEY);
+    if(raw){const a=JSON.parse(raw); if(Array.isArray(a))return a;}
+  }catch(e){}
+  return FAV_DEFAULT.slice();
+}
+function saveFavs(){
+  try{localStorage.setItem(FAV_KEY, JSON.stringify(favs));}catch(e){}
+}
+let favs=loadFavs();
+let map=null, useCanvas=false, pending=null, curCenter={...CENTER}, editIdx=null;
+// 験潮所リスト（外洋・西海～五島）。ピンから最寄りを自動選択（しおさい方式）
+const STATIONS=[
+  {name:'高後崎',lat:33.021,lon:129.561},
+  {name:'佐世保',lat:33.158,lon:129.722},
+  {name:'福江', lat:32.694,lon:128.842},
+];
+function nearestStation(lat,lon){let best=STATIONS[0],bd=1e9;
+  for(const s of STATIONS){const d=(s.lat-lat)**2+(s.lon-lon)**2; if(d<bd){bd=d;best=s;}}
+  return best.name;}
+
+// ===== 今週マトリクス（夜イカ：夜のベスト海況＋月明かり） =====
+const _WK=['日','月','火','水','木','金','土'];
+function jstMidnight(y,m,d){return Date.UTC(y,m-1,d,0,0,0)-9*3600000;}
+function jstParts(ms){const j=new Date(ms+9*3600000);return {y:j.getUTCFullYear(),m:j.getUTCMonth()+1,d:j.getUTCDate(),hh:j.getUTCHours()};}
+function todayJST(){const n=new Date(Date.now()+9*3600000);return {y:n.getUTCFullYear(),m:n.getUTCMonth()+1,d:n.getUTCDate()};}
+function _norm(x){return ((x%360)+360)%360;}
+function moonAgeCalc(ms){const D=ms/86400000+2440587.5-2451545.0;
+  const sn=_norm(218.316+13.176396*D), h=_norm(280.466+0.985647*D);return _norm(sn-h)/360*29.530589;}
+function moonGlyph(a){a=a%29.53;
+  if(a<1.8||a>=27.7)return '🌑'; if(a<5.5)return '🌒'; if(a<9.2)return '🌓'; if(a<12.9)return '🌔';
+  if(a<16.6)return '🌕'; if(a<20.3)return '🌖'; if(a<24)return '🌗'; return '🌘';}
+function moonIllum(a){return Math.round((1-Math.cos(a/29.530589*2*Math.PI))/2*100);}
+function tidePhase(age){
+  // 月齢→潮回り（大潮=新月/満月付近、小潮=上弦/下弦付近、若潮・中潮・長潮）
+  const a=((age%29.530589)+29.530589)%29.530589;
+  // 旧暦日相当（月齢+1に近い運用）で区分
+  const d=a; // 0=新月,14.76=満月
+  const near=(x,c,r)=>Math.abs(((d-x+14.765)%29.53)-14.765)<=r;
+  if(near(0,0,1.8)||near(14.76,0,1.8))return {t:'大潮',c:'#e0836a'};
+  if(near(7.4,0,1.2)||near(22.1,0,1.2))return {t:'小潮',c:'#7fb0cc'};
+  // 長潮・若潮（小潮の直後）
+  if(near(8.9,0,0.7)||near(23.6,0,0.7))return {t:'長潮',c:'#8aa2b4'};
+  if(near(10.1,0,0.7)||near(24.8,0,0.7))return {t:'若潮',c:'#8aa2b4'};
+  return {t:'中潮',c:'#cfe0ec'};
+}
+function tideRange(age){
+  // 干満差の目安(cm)：大潮差240〜小潮差88(高後崎)を月相で補間。満月/新月=最大、上下弦=最小
+  const a=((age%29.530589)+29.530589)%29.530589;
+  const phase=Math.abs(Math.cos(a/29.530589*2*Math.PI));  // 0(弦)〜1(朔望)
+  return Math.round(88 + (240-88)*phase);
+}
+function wSev(ms){return ms<3?0:ms<5?1:ms<8?2:3;}
+function vSev(m){return m==null?-1:m<0.5?0:m<1.0?1:m<1.5?2:3;}
+function next7(){const t=todayJST(),arr=[];
+  for(let i=0;i<7;i++){const mid=jstMidnight(t.y,t.m,t.d)+i*86400000;const dp=jstParts(mid+3600000);
+    const wd=new Date(Date.UTC(dp.y,dp.m-1,dp.d)).getUTCDay();const age=moonAgeCalc(mid+21*3600000);
+    const tp=tidePhase(age);
+    arr.push({key:dp.y+'-'+String(dp.m).padStart(2,'0')+'-'+String(dp.d).padStart(2,'0'),
+      md:dp.m+'/'+dp.d,w:_WK[wd],wd,glyph:moonGlyph(age),illum:moonIllum(age),tide:tp.t,tideC:tp.c,range:tideRange(age),age:age});}
+  return arr;}
+async function fetchNightBest(f,days){
+  const b='https://api.open-meteo.com/v1/forecast?latitude='+f.lat+'&longitude='+f.lon+
+    '&hourly=wind_speed_10m,weather_code&wind_speed_unit=ms&timezone=Asia%2FTokyo&forecast_days=7';
+  const m='https://marine-api.open-meteo.com/v1/marine?latitude='+(f.lat+0.005)+'&longitude='+(f.lon-0.03)+
+    '&hourly=wave_height&timezone=Asia%2FTokyo&forecast_days=7';
+  const [wx,wv]=await Promise.all([fetch(b).then(r=>{if(!r.ok)throw 0;return r.json();}),
+    fetch(m).then(r=>r.ok?r.json():null).catch(()=>null)]);
+  const H=wx.hourly, wave={}; if(wv&&wv.hourly)wv.hourly.time.forEach((t,i)=>wave[t]=wv.hourly.wave_height[i]);
+  const per={};
+  H.time.forEach((iso,i)=>{const hr=+iso.slice(11,13); if(hr%3!==0)return;   // 終日（3時間刻み全部）
+    const dk=iso.slice(0,10); const sev=Math.max(wSev(H.wind_speed_10m[i]), vSev(wave[iso]), [95,96,99].includes(H.weather_code[i])?3:0);
+    (per[dk]=per[dk]||[]).push(sev);});
+  return days.map(d=>{const a=per[d.key];return a&&a.length?Math.min(...a):-1;});}
+function sampleBest(f,days){const seed=(f.name||'').length; const pat=[0,1,0,2,1,3,2];
+  return days.map((d,i)=>pat[(i+seed)%pat.length]);}
+async function buildMatrix(){
+  if(!favs.length){document.getElementById('matrix').innerHTML='<div class="mxempty">お気に入りを登録すると一覧が出ます</div>';document.getElementById('mxsample').hidden=true;return;}
+  const days=next7(); let sample=false; const results=[];
+  for(const f of favs){let cells; try{cells=await fetchNightBest(f,days);}catch(e){cells=sampleBest(f,days);sample=true;}
+    results.push({name:f.name,cells});}
+  document.getElementById('mxsample').hidden=!sample;
+  renderMatrix(days,results);}
+function renderMatrix(days,results){
+  const SYM=['◎','○','△','×'],COL=['#38c46f','#2f9bd4','#e3a72c','#e05138'],BG=['#38c46f1a','#2f9bd41a','#e3a72c1f','#e0513826'];
+  let h='<table class="mx"><colgroup><col class="pncol">'; days.forEach(()=>h+='<col>'); h+='</colgroup><thead><tr><th></th>';
+  days.forEach(d=>{const wc=d.wd===0?'#e08a7a':d.wd===6?'#6db6e6':'#8199ac';
+    h+='<th>'+d.md+'<br><span style="color:'+wc+'">'+d.w+'</span><span class="mn" title="照度'+d.illum+'%">'+'<span class="mn moontap" title="照度" data-il="'+d.illum+'" data-mg="'+d.glyph+'">'+d.glyph+'</span>'.replace('<span class="mn"','')+'<span class="tp" style="color:'+d.tideC+'">'+d.tide+'</span><span class="trg">'+d.range+'<span class="u">cm</span></span></th>';});
+  h+='</tr></thead><tbody>';
+  results.forEach((r,ri)=>{h+='<tr><td class="pn" data-i="'+ri+'">'+esc(r.name)+'</td>';
+    r.cells.forEach(sev=>{ if(sev<0)h+='<td class="cell" data-i="'+ri+'" style="color:#4a5b68">–</td>';
+      else h+='<td class="cell" data-i="'+ri+'" style="color:'+COL[sev]+';background:'+BG[sev]+'">'+SYM[sev]+'</td>';});
+    h+='</tr>';});
+  h+='</tbody></table>';
+  document.getElementById('matrix').innerHTML=h;
+  document.querySelectorAll('.mx .moontap').forEach(el=>el.onclick=(ev)=>{ev.stopPropagation();
+    toast(el.dataset.mg+' 月の明るさ（照度）'+el.dataset.il+'%');});
+  document.querySelectorAll('.mx .cell,.mx .pn').forEach(el=>el.onclick=()=>{const f=favs[+el.dataset.i];if(!f)return;
+    const station=nearestStation(f.lat,f.lon);
+    location.href='takozaki_tide.html?'+new URLSearchParams({name:f.name,lat:f.lat,lon:f.lon,station:station}).toString();});}
+
+
+// ---------- 本物のMapLibre（ブラウザ時） ----------
+function initMapLibre(){
+  try{
+    map=new maplibregl.Map({container:'map',center:[CENTER.lon,CENTER.lat],zoom:13,
+      style:{version:8,sources:{osm:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tileSize:256,attribution:'© OpenStreetMap contributors'}},layers:[{id:'osm',type:'raster',source:'osm'}]}});
+    map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+    map.on('load',()=>{document.getElementById('maptag').textContent='OpenStreetMap';drawMarkers();});
+    map.on('move',()=>{const c=map.getCenter();curCenter={lat:c.lat,lon:c.lng};});
+    // 長押しで登録（誤爆防止）
+    let lpT=null, lpXY=null;
+    const lpCancel=()=>{if(lpT){clearTimeout(lpT);lpT=null;}};
+    map.on('mousedown',e=>{lpXY=e.point;lpT=setTimeout(()=>{openDialog(e.lngLat.lat,e.lngLat.lng);lpT=null;},550);});
+    map.on('touchstart',e=>{const pt=e.point;lpXY=pt;lpT=setTimeout(()=>{openDialog(e.lngLat.lat,e.lngLat.lng);lpT=null;},550);});
+    map.on('mouseup',lpCancel); map.on('touchend',lpCancel); map.on('dragstart',lpCancel); map.on('move',lpCancel); map.on('zoomstart',lpCancel);
+    map.on('mousemove',e=>{if(lpT&&lpXY&&(Math.abs(e.point.x-lpXY.x)>6||Math.abs(e.point.y-lpXY.y)>6))lpCancel();});
+    map.on('touchmove',e=>{if(lpT&&lpXY&&(Math.abs(e.point.x-lpXY.x)>6||Math.abs(e.point.y-lpXY.y)>6))lpCancel();});
+    map.on('error',()=>fallbackCanvas());
+    // タイルが来ないケースの保険
+    setTimeout(()=>{if(!map||!map.loaded()) fallbackCanvas();},4000);
+  }catch(_){fallbackCanvas();}
+}
+// ---------- 簡易地図（枠内・オフライン） ----------
+let ctx,W,H;
+const LAND=[
+  [[1.02,-0.02],[1.02,1.02],[0.58,1.02],[0.64,0.84],[0.57,0.70],[0.68,0.56],[0.62,0.42],[0.74,0.28],[0.82,0.10],[1.02,0.04]],
+  [[0.34,0.42],[0.46,0.38],[0.50,0.50],[0.43,0.62],[0.31,0.58],[0.27,0.48]],
+  [[0.18,0.70],[0.25,0.68],[0.26,0.78],[0.18,0.80]],
+  [[0.12,0.28],[0.18,0.26],[0.19,0.34],[0.11,0.35]]
+];
+function fallbackCanvas(){
+  if(useCanvas)return; useCanvas=true;
+  document.getElementById('map').style.display='none';
+  const cv=document.getElementById('cmap'); cv.style.display='block';
+  document.getElementById('maptag').textContent='簡易地図（枠内表示）';
+  ctx=cv.getContext('2d'); if(!ctx){document.getElementById('maptag').textContent='簡易地図（描画不可）';return;}
+  function resize(){const r=cv.parentElement.getBoundingClientRect();W=r.width;H=r.height;
+    const d=Math.min(devicePixelRatio||1,2);cv.width=W*d;cv.height=H*d;cv.style.width=W+'px';cv.style.height=H+'px';
+    ctx.setTransform(d,0,0,d,0,0);drawCanvas();}
+  window.addEventListener('resize',resize); resize();
+  // 長押しで登録（誤爆防止）
+  let cT=null,cX=0,cY=0;
+  const cCancel=()=>{if(cT){clearTimeout(cT);cT=null;}};
+  cv.addEventListener('pointerdown',ev=>{const r=cv.getBoundingClientRect();cX=ev.clientX;cY=ev.clientY;
+    const x=(ev.clientX-r.left)/W,y=(ev.clientY-r.top)/H;
+    const lat=BBOX.n-(y)*(BBOX.n-BBOX.s), lon=BBOX.w+(x)*(BBOX.e-BBOX.w);
+    cT=setTimeout(()=>{tmpPin={x,y};drawCanvas();openDialog(lat,lon);cT=null;},550);});
+  cv.addEventListener('pointermove',ev=>{if(cT&&(Math.abs(ev.clientX-cX)>6||Math.abs(ev.clientY-cY)>6))cCancel();});
+  cv.addEventListener('pointerup',cCancel); cv.addEventListener('pointercancel',cCancel); cv.addEventListener('pointerleave',cCancel);
+}
+let tmpPin=null;
+function drawCanvas(){
+  if(!ctx)return;
+  ctx.fillStyle='#0e2f3f';ctx.fillRect(0,0,W,H);           // 海
+  // グリッド
+  ctx.strokeStyle='#12405a';ctx.lineWidth=1;
+  for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(W*i/6,0);ctx.lineTo(W*i/6,H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,H*i/6);ctx.lineTo(W,H*i/6);ctx.stroke();}
+  // 陸
+  ctx.fillStyle='#1c3320';ctx.strokeStyle='#3e6b46';ctx.lineWidth=1.5;
+  LAND.forEach(poly=>{ctx.beginPath();poly.forEach((p,i)=>{const x=p[0]*W,y=p[1]*H;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    ctx.closePath();ctx.fill();ctx.stroke();});
+  // 既存お気に入りピン
+  favs.forEach(f=>{const x=(f.lon-BBOX.w)/(BBOX.e-BBOX.w)*W, y=(BBOX.n-f.lat)/(BBOX.n-BBOX.s)*H;
+    if(x>=0&&x<=W&&y>=0&&y<=H)pin(x,y,'#5f9bc0');});
+  if(tmpPin)pin(tmpPin.x*W,tmpPin.y*H,'#e05138');
+}
+function pin(x,y,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y-6,6,0,7);ctx.fill();
+  ctx.beginPath();ctx.moveTo(x-5,y-4);ctx.lineTo(x+5,y-4);ctx.lineTo(x,y+4);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(x,y-6,6,0,7);ctx.stroke();}
+
+// ---------- 名前入力ダイアログ ----------
+function openDialog(lat,lon){pending={lat,lon};
+  document.getElementById('mco').textContent=lat.toFixed(4)+'°N  '+lon.toFixed(4)+'°E';
+  document.getElementById('nameInput').value='';
+  document.getElementById('modal').classList.add('show');
+  setTimeout(()=>document.getElementById('nameInput').focus(),50);}
+function openRename(i){editIdx=i;pending=null;const f=favs[i];
+  document.querySelector('#modal h3').textContent='名前を編集';
+  document.getElementById('mco').textContent=f.lat.toFixed(4)+'°N  '+f.lon.toFixed(4)+'°E';
+  document.getElementById('nameInput').value=f.name;
+  document.getElementById('modal').classList.add('show');
+  setTimeout(()=>{const el=document.getElementById('nameInput');el.focus();el.select();},50);}
+function closeDialog(){document.getElementById('modal').classList.remove('show');tmpPin=null;editIdx=null;
+  document.querySelector('#modal h3').textContent='ポイントを登録';if(useCanvas)drawCanvas();}
+document.getElementById('cancel').onclick=closeDialog;
+document.getElementById('save').onclick=()=>{
+  const raw=document.getElementById('nameInput').value.trim();
+  if(editIdx!=null){                          // 改名モード
+    const nm=raw||favs[editIdx].name;
+    favs[editIdx].name=nm; saveFavs();
+    closeDialog();renderFavs();drawMarkers();buildMatrix();toast('名前を「'+nm+'」に変更しました');
+    return;
+  }
+  const nm=raw||('新規ポイント'+(favs.length+1));   // 新規登録（名前なしでも仮名でOK）
+  favs.push({name:nm,lat:pending.lat,lon:pending.lon}); saveFavs();
+  closeDialog();hideMap();renderFavs();drawMarkers();buildMatrix();toast('「'+nm+'」を登録しました');};
+document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('save').click();});
+
+// 「＋」= 地図中心に登録
+function showMap(){document.body.classList.add('mapmode');
+  setTimeout(()=>{ if(map&&map.resize){try{map.resize();}catch(e){}} if(useCanvas){const cv=document.getElementById('cmap');const r=cv.parentElement.getBoundingClientRect();const dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';if(ctx){ctx.setTransform(dpr,0,0,dpr,0,0);drawCanvas();}} },60);}
+function hideMap(){document.body.classList.remove('mapmode');}
+document.getElementById('add').onclick=showMap;
+document.getElementById('mpback').onclick=hideMap;
+
+// ---------- お気に入り一覧 ----------
+function renderFavs(){
+  const el=document.getElementById('favlist');
+  if(!favs.length){el.innerHTML='<div class="empty">まだお気に入りがありません。地図を長押しして登録してください。</div>';return;}
+  el.innerHTML=favs.map((f,i)=>'<div class="fav" data-i="'+i+'"><span class="pin">📍</span>'+
+    '<div><div class="nm">'+esc(f.name)+'</div><div class="co">'+f.lat.toFixed(4)+'°N '+f.lon.toFixed(4)+'°E</div></div>'+
+    '<button class="edit" data-e="'+i+'" title="名前を編集">✎</button>'+'<button class="del" data-d="'+i+'" title="削除">✕</button><span class="go">›</span></div>').join('');
+  el.querySelectorAll('.fav').forEach(row=>row.onclick=e=>{
+    if(e.target.classList.contains('del')||e.target.classList.contains('edit'))return;
+    const f=favs[+row.dataset.i];
+    // 最寄り験潮所（外洋は当面すべて高後崎）→ 後で験潮所リストから自動選択に拡張
+    const station=nearestStation(f.lat,f.lon);
+    const q=new URLSearchParams({name:f.name,lat:f.lat,lon:f.lon,station:station});
+    location.href='takozaki_tide.html?'+q.toString();});
+  el.querySelectorAll('.edit').forEach(b=>b.onclick=e=>{e.stopPropagation();openRename(+b.dataset.e);});
+  el.querySelectorAll('.del').forEach(b=>b.onclick=e=>{e.stopPropagation();favs.splice(+b.dataset.d,1);saveFavs();renderFavs();drawMarkers();buildMatrix();});
+}
+function drawMarkers(){
+  if(useCanvas){drawCanvas();return;}
+  if(!map||!map.loaded())return;
+  (drawMarkers._m||(drawMarkers._m=[])).forEach(m=>m.remove());drawMarkers._m=[];
+  favs.forEach(f=>{const m=new maplibregl.Marker({color:'#5f9bc0'}).setLngLat([f.lon,f.lat])
+    .setPopup(new maplibregl.Popup().setText(f.name)).addTo(map);drawMarkers._m.push(m);});
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
+  clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200);}
+
+// 起動：MapLibreがあれば本物、無ければ簡易地図
+renderFavs(); buildMatrix();
+if(window.maplibregl){initMapLibre();} else {
+  let tries=0;const iv=setInterval(()=>{tries++;
+    if(window.maplibregl){clearInterval(iv);initMapLibre();}
+    else if(tries>12){clearInterval(iv);fallbackCanvas();}},250);
+}
+</script>
+</body>
+</html>
