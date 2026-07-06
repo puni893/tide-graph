@@ -108,7 +108,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .wxdatebar{margin:8px 12px 0;text-align:center;font-size:15px;font-weight:700;color:#cfe8f5;
     background:#0e2a3d;border:1px solid var(--rule);border-radius:8px;padding:7px 0}
   .wxdays{display:flex;overflow-x:auto;border-top:1px solid var(--line)}
-  .wxday{flex:0 0 auto;text-align:center;padding:9px 9px;cursor:pointer;border-right:1px solid #1a2b3a;line-height:1.35}
+  .wxday{flex:1 1 0;min-width:0;text-align:center;padding:9px 2px;cursor:pointer;border-right:1px solid #1a2b3a;line-height:1.35}
   .wxday.on{background:#0e2a3d}
   .wxday .d{font-size:15.5px;font-weight:700} .wxday .w{font-size:12px;color:var(--mut)}
   .wxday.sun .w{color:#e08a7a} .wxday.sat .w{color:#6db6e6}
@@ -230,6 +230,16 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   #uiPanel .hint{font-size:13px;color:#9db3c4;text-align:center;margin:10px 0 6px;line-height:1.5}
   #uiPanel .reset{background:transparent;border:1px solid #3a5b73;color:#bcd8ea;border-radius:10px;
     font-size:14px;padding:9px 18px;cursor:pointer}
+  .chartwrap{position:relative}
+  #chartExpand{position:absolute;top:10px;right:14px;z-index:6;background:rgba(14,42,61,.92);
+    border:1px solid #2c6f8c;color:#cfe8f5;border-radius:9px;width:38px;height:38px;font-size:18px;cursor:pointer;line-height:1}
+  #chartFull{position:fixed;inset:0;z-index:400;display:none;background:#0c1620;flex-direction:column}
+  #chartFull.show{display:flex}
+  #chartFull .fhd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #22384a}
+  #chartFull .fhd .t{font-size:17px;font-weight:800;color:#eaf3fa}
+  #chartFull .fx{background:#0e2a3d;border:1px solid #2c6f8c;color:#cfe8f5;border-radius:10px;font-size:17px;font-weight:700;padding:9px 16px;cursor:pointer}
+  #chartFull .fbody{flex:1;min-height:0;padding:6px}
+  #chartFull svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 </style>
 </head>
 <body>
@@ -264,7 +274,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
 </div>
 <div class="nowbar" id="nowbar"></div>
 <div class="infobar" id="infobar"></div>
-<div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 720 640" preserveAspectRatio="xMidYMid meet"></svg></div>
+<div class="chartwrap"><button id="chartExpand" title="全画面で見る">⛶</button><svg class="chart" id="chart" viewBox="0 0 720 640" preserveAspectRatio="xMidYMid meet"></svg></div>
 <div class="panel">
   <div class="phd" id="seahd">海面情報（高後崎・基準値）</div>
   <div class="sea">
@@ -472,6 +482,33 @@ function tideState(ms){
   }
   return {h,slope,rising,next:found};
 }
+function enlargeForFull(str){
+  // 全画面専用：主要な数字を大きく＋ヘッダーは「大きくしたぶん縦に離す」
+  return str
+    // ---- プロット内の数字（余裕があるので大きく）----
+    .split('fill="#5f8299" font-size="17"').join('fill="#5f8299" font-size="30"')       // 時刻軸
+    .split('fill="#12202c" font-size="18"').join('fill="#12202c" font-size="30"')       // 満干cm
+    .split('<tspan font-size="13" font-weight="600">cm').join('<tspan font-size="21" font-weight="600">cm')
+    .split('fill="#8fb0c4" font-size="14"').join('fill="#8fb0c4" font-size="24"')       // 満干時刻
+    .split('fill="#fff" font-size="16" font-weight="700"').join('fill="#fff" font-size="26" font-weight="700"') // 現在値
+    .split('fill="#6b8296" font-size="15"').join('fill="#6b8296" font-size="24"')       // Avg
+    .split('fill="#55697a" font-size="15"').join('fill="#55697a" font-size="24"')       // 0
+    .split('font-size="17" font-weight="800"').join('font-size="27" font-weight="800"') // 傾き
+    .split('<tspan font-size="12" fill="#9fb8c8">cm/10分').join('<tspan font-size="19" fill="#9fb8c8">cm/10分')
+    // ---- ヘッダー：段差配置で重なり回避（band16 / 日出入40 / 月62 / プロット内日付は下へ）----
+    .split('y="23"').join('y="16"')
+    .split('font-size="20" font-weight="700" text-anchor="middle">').join('font-size="23" font-weight="700" text-anchor="middle">') // 日付バー
+    .split('y="34"').join('y="40"')
+    .split('fill="#f0c05a" font-size="16"').join('fill="#f0c05a" font-size="19"')       // ☀
+    .split('fill="#f0955a" font-size="16"').join('fill="#f0955a" font-size="19"')       // 🌇
+    .split('y="51"').join('y="61"')
+    .split('fill="#9fc0e0" font-size="16"').join('fill="#9fc0e0" font-size="19"')       // 🌙↑
+    .split('fill="#7fa0c0" font-size="16"').join('fill="#7fa0c0" font-size="19"')       // 🌙↓
+    .split('<tspan font-size="22" font-weight="700">↑').join('<tspan font-size="23" font-weight="700">↑')
+    .split('<tspan font-size="22" font-weight="700">↓').join('<tspan font-size="23" font-weight="700">↓')
+    // プロット上端の日付(dp2 y=68)は月と被るのでプロット内へ下げる
+    .split('y="68" fill="#7fb8d8" font-size="16"').join('y="104" fill="#7fb8d8" font-size="20"');
+}
 function render(){
   const leftMs=viewStart, rightMs=leftMs+WIN, centerMs=leftMs+WIN/2;
   // header: 中央の日付
@@ -633,6 +670,8 @@ function render(){
    s+=band;
   }
   document.getElementById('chart').innerHTML=s;
+  var _fs=document.getElementById('chartFullSvg');
+  if(_fs && document.getElementById('chartFull').classList.contains('show')) _fs.innerHTML=enlargeForFull(s);
   updateTodayTide();
 }
 
@@ -653,6 +692,28 @@ function updateTodayTide(){
     '<div class="tt-cell tt-lo"><div class="tk">本日の最干潮</div><div class="tv">'+Math.round(lo.cm)+'<small>cm</small></div>'+
       '<div class="tsub">'+fmtHM(jstParts(lo.ms).hh)+'</div></div>';
 }
+
+// --- 潮位グラフ全画面 ---
+(function(){
+  var fsWired=false;
+  function wireFullDrag(){
+    if(fsWired)return; var fsvg=document.getElementById('chartFullSvg'); if(!fsvg)return; fsWired=true;
+    var dg=false,sx=0,sv=0;
+    fsvg.addEventListener('pointerdown',function(e){dg=true;sx=e.clientX;sv=viewStart;try{fsvg.setPointerCapture(e.pointerId);}catch(_){}});
+    fsvg.addEventListener('pointermove',function(e){if(!dg)return;var dx=e.clientX-sx;var hpp=24/fsvg.clientWidth;viewStart=sv-dx*hpp*3600000;scheduleRender();});
+    function end(){dg=false;}
+    fsvg.addEventListener('pointerup',end); fsvg.addEventListener('pointercancel',end);
+  }
+  function openFull(){var ov=document.getElementById('chartFull'); if(!ov)return;
+    var src=document.getElementById('chart'), fs=document.getElementById('chartFullSvg');
+    if(fs&&src)fs.innerHTML=enlargeForFull(src.innerHTML);
+    var t=document.getElementById('chartFullTtl'); if(t&&window.POINT)t.textContent=POINT.name+' 潮位';
+    ov.classList.add('show'); wireFullDrag();}
+  function closeFull(){var ov=document.getElementById('chartFull'); if(ov)ov.classList.remove('show');}
+  var btn=document.getElementById('chartExpand'); if(btn)btn.onclick=openFull;
+  // 閉じるボタンは後から存在するので委譲でも良いが、DOMContentLoaded後に配線
+  document.addEventListener('click',function(e){if(e.target&&e.target.id==='chartFullClose')closeFull();});
+})();
 
 // --- ドラッグ操作 ---
 const chartEl=document.getElementById('chart');
@@ -770,7 +831,7 @@ function wcodeIcon(c){c=(c==null?0:c);
   if(c>=80&&c<=82)return '🌦️'; if(c>=85&&c<=86)return '🌨️'; if(c>=95)return '⛈️';
   return '☁️';}
 function arrowSVG(wdir,sev){const rot=(wdir+180)%360;
-  return '<svg width="34" height="34" viewBox="0 0 20 20" style="transform:rotate('+rot+'deg)"><path d="M10 1.5 L15.5 17 L10 13 L4.5 17 Z" fill="'+VCOL[sev]+'"/></svg>';}
+  return '<svg width="24" height="24" viewBox="0 0 20 20" style="transform:rotate('+rot+'deg)"><path d="M10 1.5 L15.5 17 L10 13 L4.5 17 Z" fill="'+VCOL[sev]+'"/></svg>';}
 function dayTabsHTML(){let h='<div class="wxdays">';
   WXDATA.keys.forEach((k,i)=>{const d=new Date(k+'T00:00:00'),w=d.getUTCDay(),o=WXDATA.days[k];
     const cls=['wxday'];if(i===wxDay)cls.push('on');if(w===0)cls.push('sun');if(w===6)cls.push('sat');
@@ -907,23 +968,33 @@ function renderWav(){
   let axis='';rows.forEach(r=>{axis+='<div class="ax">'+String(r.hr).padStart(2,'0')+'</div>';});
   // 周期＝波の間隔、波高＝波の高さ、で"海の波の絵"を描く（白波付き）
   const HW=78, baseY=66;                          // 行高・海面下端
-  const perAt=x=>{const f=x/cellW-0.5; let i=Math.floor(f); i=Math.max(0,Math.min(rows.length-2,i));
-    const a=rows[i]&&rows[i].wp!=null?rows[i].wp:6, b=rows[i+1]&&rows[i+1].wp!=null?rows[i+1].wp:a;
-    const t=Math.max(0,Math.min(1,f-i)); return a+(b-a)*t;};
-  const whAt=x=>{const f=x/cellW-0.5; let i=Math.floor(f); i=Math.max(0,Math.min(rows.length-2,i));
-    const a=rows[i]&&rows[i].wh!=null?rows[i].wh:0.4, b=rows[i+1]&&rows[i+1].wh!=null?rows[i+1].wh:a;
-    const t=Math.max(0,Math.min(1,f-i)); return a+(b-a)*t;};
-  // 位相・振幅・波頭位置を計算
-  let top='M 0 '+baseY, phase=0; const step=2, kBase=2.2;
-  const crests=[]; let prevY=baseY, prevSlope=0;
-  const yAt=x=>{const per=perAt(Math.min(x,W-1)); const wh=whAt(Math.min(x,W-1));
-    const amp=Math.max(4,Math.min(30, wh*100*0.19));   // 波高cm→振幅px
-    return {y:baseY-13-amp - amp*Math.sin(phase), amp};};
+  // 補間ヘルパ（フィールドf名で線形補間）
+  const interp=(x,key,def)=>{const ff=x/cellW-0.5; let i=Math.floor(ff); i=Math.max(0,Math.min(rows.length-2,i));
+    const a=(rows[i]&&rows[i][key]!=null)?rows[i][key]:def, b=(rows[i+1]&&rows[i+1][key]!=null)?rows[i+1][key]:a;
+    const t=Math.max(0,Math.min(1,ff-i)); return a+(b-a)*t;};
+  const whAt =x=>interp(x,'wh',0.4);            // 全体波高(m)
+  const perAt=x=>interp(x,'wp',6);              // 全体周期(s)
+  const shAt =x=>interp(x,'sh',0);              // うねり高(m)
+  const spAt =x=>interp(x,'sp',8);              // うねり周期(s)
+  // 風波成分：全体波と うねりの二乗差（有義波高の合成則）
+  const wwAt =x=>{const h=whAt(x),sh=shAt(x); return Math.sqrt(Math.max(0,h*h-sh*sh));};
+  // うねり=長い波(周期長→波長長), 風波=短い細かいさざ波。両者を重ねて海面を描く
+  let top='M 0 '+baseY; const step=2;
+  const kSwell=2.2, kChop=2.2;
+  let phS=0, phW=0;                              // うねり位相・風波位相
   let pts=[];
-  for(let x=0;x<=W;x+=step){const per=perAt(Math.min(x,W-1)); phase+=step*(kBase/per);
-    const wh=whAt(Math.min(x,W-1)); const amp=Math.max(4,Math.min(30, wh*100*0.19));
-    const y=baseY-13-amp - amp*Math.sin(phase);
-    pts.push([x,y,amp,Math.cos(phase)]);
+  for(let x=0;x<=W;x+=step){
+    const sp=spAt(Math.min(x,W-1)), wp=perAt(Math.min(x,W-1));
+    phS+=step*(kSwell/Math.max(4,sp));           // うねり=長周期→波長長くゆったり
+    phW+=step*(kChop/Math.max(2,wp*0.5));         // 風波=短周期→波長短く細かい
+    const sh=shAt(Math.min(x,W-1)), ww=wwAt(Math.min(x,W-1));
+    const sAmp=Math.max(0,Math.min(18, sh*100*0.11));   // うねり振幅
+    const wAmp=Math.max(0,Math.min(9,  ww*100*0.11));   // 風波振幅(細かい)
+    const yS=-sAmp*Math.sin(phS);
+    const yW=-wAmp*Math.sin(phW);
+    const totAmp=sAmp+wAmp;
+    const y=baseY-13-totAmp*0.6 + yS + yW;
+    pts.push([x,y,totAmp,Math.cos(phW),Math.cos(phS)]);   // [x,y,合成振幅,風波cos,うねりcos]
     top+=' L '+x.toFixed(1)+' '+y.toFixed(1);}
   const fillPath=top+' L '+W+' '+baseY+' L 0 '+baseY+' Z';
   // 波高の判定色（◎<50 / ○<100 / △<150 / ×）で時間ごとに塗り分け
@@ -935,8 +1006,8 @@ function renderWav(){
     _stops+='<stop offset="'+o0+'%" stop-color="'+c+'"/><stop offset="'+o1+'%" stop-color="'+c+'"/>';});
   // 白波：カヤック判断の目安。波高50cm未満は白波ゼロ、50/100/150cmの判定しきい値に連動して増える
   let foam='';
-  for(let i=1;i<pts.length;i++){const [x,y,amp,c0]=pts[i], c1=pts[i-1][3];
-    if(c1>0&&c0<=0){ // 波頭
+  for(let i=1;i<pts.length;i++){const x=pts[i][0],y=pts[i][1],c0=pts[i][3],c1=pts[i-1][3];
+    if(c1>0&&c0<=0){ // 風波の波頭
       const whCm=whAt(Math.min(x,W-1))*100;
       if(whCm<50) continue;                         // 50cm未満＝白波なし（ベタ凪〜緩い波）
       // 50→泡1個、100→約4個、150→約7個、と判定域に沿って増加
@@ -1102,5 +1173,9 @@ wxGo(); warnGo(); setInterval(warnGo,600000);
   var rs=document.getElementById('uiReset'); if(rs)rs.onclick=function(){apply(null);}; // 標準=素
 })();
 </script>
+<div id="chartFull">
+  <div class="fhd"><span class="t" id="chartFullTtl">潮位グラフ</span><button class="fx" id="chartFullClose">✕ 閉じる</button></div>
+  <div class="fbody"><svg id="chartFullSvg" viewBox="0 0 720 640" preserveAspectRatio="none"></svg></div>
+</div>
 </body>
 </html>

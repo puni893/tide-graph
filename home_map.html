@@ -291,8 +291,8 @@ function initMapLibre(){
     let lpT=null, lpXY=null;
     const lpCancel=()=>{if(lpT){clearTimeout(lpT);lpT=null;}};
     map.on('mousedown',e=>{lpXY=e.point;lpT=setTimeout(()=>{openDialog(e.lngLat.lat,e.lngLat.lng);lpT=null;},550);});
-    map.on('touchstart',e=>{const pt=e.point;lpXY=pt;lpT=setTimeout(()=>{openDialog(e.lngLat.lat,e.lngLat.lng);lpT=null;},550);});
-    map.on('mouseup',lpCancel); map.on('touchend',lpCancel); map.on('dragstart',lpCancel); map.on('move',lpCancel); map.on('zoomstart',lpCancel);
+    map.on('touchstart',e=>{if(e.originalEvent&&e.originalEvent.touches&&e.originalEvent.touches.length>1){lpCancel();return;}const pt=e.point;lpXY=pt;lpT=setTimeout(()=>{openDialog(e.lngLat.lat,e.lngLat.lng);lpT=null;},550);});
+    map.on('mouseup',lpCancel); map.on('touchend',lpCancel); map.on('dragstart',lpCancel); map.on('move',lpCancel); map.on('zoomstart',lpCancel); map.on('rotatestart',lpCancel); map.on('pitchstart',lpCancel);
     map.on('mousemove',e=>{if(lpT&&lpXY&&(Math.abs(e.point.x-lpXY.x)>6||Math.abs(e.point.y-lpXY.y)>6))lpCancel();});
     map.on('touchmove',e=>{if(lpT&&lpXY&&(Math.abs(e.point.x-lpXY.x)>6||Math.abs(e.point.y-lpXY.y)>6))lpCancel();});
     map.on('error',()=>fallbackCanvas());
@@ -319,14 +319,17 @@ function fallbackCanvas(){
     ctx.setTransform(d,0,0,d,0,0);drawCanvas();}
   window.addEventListener('resize',resize); resize();
   // 長押しで登録（誤爆防止）
-  let cT=null,cX=0,cY=0;
+  let cT=null,cX=0,cY=0,activePtrs=0;
   const cCancel=()=>{if(cT){clearTimeout(cT);cT=null;}};
-  cv.addEventListener('pointerdown',ev=>{const r=cv.getBoundingClientRect();cX=ev.clientX;cY=ev.clientY;
+  cv.addEventListener('pointerdown',ev=>{activePtrs++;
+    if(activePtrs>1){cCancel();return;}                        // 二本指=長押し無効(ズーム等)
+    const r=cv.getBoundingClientRect();cX=ev.clientX;cY=ev.clientY;
     const x=(ev.clientX-r.left)/W,y=(ev.clientY-r.top)/H;
     const lat=BBOX.n-(y)*(BBOX.n-BBOX.s), lon=BBOX.w+(x)*(BBOX.e-BBOX.w);
     cT=setTimeout(()=>{tmpPin={x,y};drawCanvas();openDialog(lat,lon);cT=null;},550);});
   cv.addEventListener('pointermove',ev=>{if(cT&&(Math.abs(ev.clientX-cX)>6||Math.abs(ev.clientY-cY)>6))cCancel();});
-  cv.addEventListener('pointerup',cCancel); cv.addEventListener('pointercancel',cCancel); cv.addEventListener('pointerleave',cCancel);
+  const ptrUp=()=>{activePtrs=Math.max(0,activePtrs-1);cCancel();};
+  cv.addEventListener('pointerup',ptrUp); cv.addEventListener('pointercancel',ptrUp); cv.addEventListener('pointerleave',ptrUp);
 }
 let tmpPin=null;
 function drawCanvas(){
