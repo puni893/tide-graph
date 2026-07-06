@@ -2,10 +2,9 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=150, viewport-fit=cover">
-<script>(function(){try{var v=parseInt(localStorage.getItem('ika_uiscale')||'150',10);
-if(isNaN(v))v=150;v=Math.max(90,Math.min(300,v));
-var m=document.querySelector('meta[name=viewport]');if(m)m.setAttribute('content','width='+v+', viewport-fit=cover');}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>(function(){try{var raw=localStorage.getItem('ika_uiscale');
+if(raw){var v=parseInt(raw,10);if(!isNaN(v)){v=Math.max(90,Math.min(360,v));var m=document.querySelector('meta[name=viewport]');if(m)m.setAttribute('content','width='+v+', viewport-fit=cover');}}}catch(e){}})();</script>
 
 <meta name="theme-color" content="#0c1620">
 <meta name="mobile-web-app-capable" content="yes">
@@ -115,10 +114,10 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   <div class="r"><span class="ttl">表示サイズ</span><button class="x" id="uiClose">✕</button></div>
   <div class="r">
     <button class="aa" id="uiMinus">A−</button>
-    <input id="uiRange" type="range" min="90" max="300" step="10" value="150">
+    <input id="uiRange" type="range" min="170" max="380" step="10" value="170">
     <button class="aa" id="uiPlus">A＋</button>
   </div>
-  <div class="hint">小さく ← スライダー → 大きく／設定は自動保存されます</div>
+  <div class="hint">標準 ← スライダー → 大きく／「標準に戻す」で等倍。設定は保存されます</div>
   <div class="r" style="justify-content:center"><button class="reset" id="uiReset">標準に戻す</button></div>
 </div></div>
 <header style="display:flex;align-items:flex-start;gap:8px">
@@ -424,22 +423,23 @@ if(window.maplibregl){initMapLibre();} else {
 
 <script>
 (function(){
-  var KEY='ika_uiscale', DEF=150, LO=90, HI=300, SUM=LO+HI;
-  function clamp(v){return Math.max(LO,Math.min(HI,v));}
-  function getPx(){var v=parseInt(localStorage.getItem(KEY)||DEF,10);return isNaN(v)?DEF:clamp(v);}
-  function apply(px){px=clamp(px);
-    var m=document.querySelector('meta[name=viewport]'); if(m)m.setAttribute('content','width='+px+', viewport-fit=cover');
-    try{localStorage.setItem(KEY,String(px));}catch(e){}
-    var r=document.getElementById('uiRange'); if(r)r.value=(SUM-px);}
+  var KEY='ika_uiscale', LOpx=170, HIpx=380, SUM=LOpx+HIpx; // px：小px=大表示。null=素(等倍)
+  function savedPx(){var r=localStorage.getItem(KEY);if(!r)return null;var v=parseInt(r,10);return isNaN(v)?null:Math.max(LOpx,Math.min(HIpx,v));}
+  function apply(px){
+    var m=document.querySelector('meta[name=viewport]');
+    if(px==null){ if(m)m.setAttribute('content','width=device-width, initial-scale=1, viewport-fit=cover'); try{localStorage.removeItem(KEY);}catch(e){} }
+    else { px=Math.max(LOpx,Math.min(HIpx,px)); if(m)m.setAttribute('content','width='+px+', viewport-fit=cover'); try{localStorage.setItem(KEY,String(px));}catch(e){} }
+    var r=document.getElementById('uiRange'); if(r){ r.value=(px==null?LOpx:(SUM-px)); } // 右=大きい, 素=左端
+  }
   var gear=document.getElementById('uiGear'), panel=document.getElementById('uiPanel'), range=document.getElementById('uiRange');
-  if(range)range.value=(SUM-getPx());
+  var cur=savedPx(); if(range)range.value=(cur==null?LOpx:(SUM-cur));
   if(gear)gear.onclick=function(){panel.classList.add('show');};
   var cl=document.getElementById('uiClose'); if(cl)cl.onclick=function(){panel.classList.remove('show');};
   if(panel)panel.addEventListener('click',function(e){if(e.target===panel)panel.classList.remove('show');});
-  if(range)range.addEventListener('input',function(){apply(SUM-parseInt(range.value,10));});
-  var pl=document.getElementById('uiPlus'); if(pl)pl.onclick=function(){apply(getPx()-20);};
-  var mn=document.getElementById('uiMinus'); if(mn)mn.onclick=function(){apply(getPx()+20);};
-  var rs=document.getElementById('uiReset'); if(rs)rs.onclick=function(){apply(DEF);};
+  if(range)range.addEventListener('input',function(){apply(SUM-parseInt(range.value,10));}); // 右=大きい→px小
+  var pl=document.getElementById('uiPlus'); if(pl)pl.onclick=function(){var c=savedPx();apply((c==null?HIpx:c)-20);};   // A＋大きく
+  var mn=document.getElementById('uiMinus'); if(mn)mn.onclick=function(){var c=savedPx();if(c==null)return;var n=c+20;apply(n>=HIpx?null:n);}; // A−小さく(端で素)
+  var rs=document.getElementById('uiReset'); if(rs)rs.onclick=function(){apply(null);}; // 標準=素
 })();
 </script>
 </body>
