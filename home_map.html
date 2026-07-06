@@ -2,7 +2,15 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=150, viewport-fit=cover">
+<script>
+(function(){try{
+  var v=parseInt(localStorage.getItem('ika_uiscale')||'150',10);
+  if(isNaN(v)) v=150; v=Math.max(120,Math.min(420,v));
+  var m=document.querySelector('meta[name=viewport]');
+  if(m) m.setAttribute('content','width='+v+', viewport-fit=cover');
+}catch(e){}})();
+</script>
 <meta name="theme-color" content="#0c1620">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -92,9 +100,36 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .mpback{background:var(--card);border:1px solid var(--rule);color:var(--ink);border-radius:9px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer}
   .mpttl{font-size:14px;color:#cfe0ec;font-weight:700}
   .add{position:relative}
+  #uiGear{position:fixed;top:8px;right:8px;z-index:200;width:44px;height:44px;border-radius:999px;
+    background:rgba(20,33,46,.92);border:1px solid #2c6f8c;color:#cfe8f5;font-size:22px;cursor:pointer;
+    box-shadow:0 2px 10px #0007;line-height:1}
+  #uiPanel{position:fixed;top:58px;right:8px;left:8px;max-width:420px;margin-left:auto;z-index:200;display:none;
+    background:#14212e;border:1px solid #2c6f8c;border-radius:14px;padding:14px 14px 12px;box-shadow:0 6px 24px #000a}
+  #uiPanel.show{display:block}
+  #uiPanel .uiRow{display:flex;align-items:center;gap:10px;margin:6px 0}
+  #uiPanel .uiRow.uiBig{gap:12px}
+  #uiPanel .uiTtl{font-size:16px;font-weight:800;color:#eaf3fa;flex:1}
+  #uiPanel #uiClose{background:transparent;border:0;color:#9db3c4;font-size:20px;cursor:pointer;padding:4px 8px}
+  #uiPanel .uiAA{background:#0e2a3d;border:1px solid #2c6f8c;color:#cfe8f5;border-radius:10px;
+    font-size:18px;font-weight:800;padding:10px 14px;cursor:pointer;min-width:56px}
+  #uiPanel #uiRange{flex:1;height:34px}
+  #uiPanel .uiHint{font-size:13px;color:#9db3c4;text-align:center;margin:8px 0 4px;line-height:1.5}
+  #uiPanel .uiReset{background:transparent;border:1px solid #3a5b73;color:#bcd8ea;border-radius:9px;
+    font-size:14px;padding:8px 16px;cursor:pointer}
 </style>
 </head>
 <body>
+<button id="uiGear" aria-label="表示設定" title="表示サイズ">⚙</button>
+<div id="uiPanel">
+  <div class="uiRow"><span class="uiTtl">表示サイズ</span><button id="uiClose">✕</button></div>
+  <div class="uiRow uiBig">
+    <button id="uiMinus" class="uiAA">A−</button>
+    <input id="uiRange" type="range" min="120" max="420" step="10" value="150">
+    <button id="uiPlus" class="uiAA">A＋</button>
+  </div>
+  <div class="uiHint">大きく ← → 小さく／設定は自動保存されます</div>
+  <div class="uiRow" style="justify-content:center"><button id="uiReset" class="uiReset">標準に戻す</button></div>
+</div>
 <header>
   <h1>お気に入り登録</h1>
   <div class="s">OpenStreetMap ／ キー不要・カード不要・完全無料</div>
@@ -393,6 +428,29 @@ if(window.maplibregl){initMapLibre();} else {
     if(window.maplibregl){clearInterval(iv);initMapLibre();}
     else if(tries>12){clearInterval(iv);fallbackCanvas();}},250);
 }
+</script>
+<script>
+(function(){
+  var KEY='ika_uiscale', DEF=150;
+  function get(){var v=parseInt(localStorage.getItem(KEY)||DEF,10);return isNaN(v)?DEF:Math.max(120,Math.min(420,v));}
+  function apply(v){v=Math.max(120,Math.min(420,v));
+    var m=document.querySelector('meta[name=viewport]');
+    if(m) m.setAttribute('content','width='+v+', viewport-fit=cover');
+    try{localStorage.setItem(KEY,String(v));}catch(e){}
+    var r=document.getElementById('uiRange'); if(r) r.value=v;}
+  // 注意：スライダーは「右=小さい」の直感に合わせ、値を反転表示
+  var gear=document.getElementById('uiGear'), panel=document.getElementById('uiPanel');
+  var range=document.getElementById('uiRange');
+  gear.onclick=function(){panel.classList.toggle('show');};
+  document.getElementById('uiClose').onclick=function(){panel.classList.remove('show');};
+  range.value=get();
+  // スライダー：左に動かすほど「大きく」したい → min/maxはpx(小さいpx=大きい表示)。
+  // つまりスライダーを左(=小さいpx)にすると表示が大きくなる。ラベルで補足済み。
+  range.addEventListener('input',function(){apply(parseInt(range.value,10));});
+  document.getElementById('uiPlus').onclick=function(){apply(get()-20);};   // A+ = px下げて拡大
+  document.getElementById('uiMinus').onclick=function(){apply(get()+20);};  // A- = px上げて縮小
+  document.getElementById('uiReset').onclick=function(){apply(DEF);};
+})();
 </script>
 </body>
 </html>
