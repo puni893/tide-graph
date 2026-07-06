@@ -269,7 +269,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
 </div>
 <div class="nowbar" id="nowbar"></div>
 <div class="infobar" id="infobar"></div>
-<div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 720 720" preserveAspectRatio="xMidYMid meet"></svg></div>
+<div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 720 640" preserveAspectRatio="xMidYMid meet"></svg></div>
 <div class="panel">
   <div class="phd" id="seahd">海面情報（高後崎・基準値）</div>
   <div class="sea">
@@ -514,7 +514,7 @@ function render(){
   }
   const exf=[]; ext.forEach(e=>{if(!exf.length||(e.ms-exf[exf.length-1].ms)>0.6*3600000)exf.push(e);});
 
-  const W=720,Hh=720,padL=8,padR=8,top=124,bot=636,yMax=720;
+  const W=720,Hh=640,padL=8,padR=8,top=70,bot=580,yMax=640;
   const xF=ms=>padL+(ms-leftMs)/WIN*(W-padL-padR);
   const yF=cm=>bot-(cm/yMax)*(bot-top);
   let s='';
@@ -545,16 +545,16 @@ function render(){
   // grid
   const avgY=yF(Z0), zeroY=yF(0);
   s+='<line x1="'+padL+'" y1="'+avgY+'" x2="'+(W-padR)+'" y2="'+avgY+'" stroke="#4a6274"/>';
-  s+='<text x="'+(W-padR-4)+'" y="'+(avgY-4)+'" fill="#6b8296" font-size="30" text-anchor="end">Avg 162</text>';
+  s+='<text x="'+(W-padR-4)+'" y="'+(avgY-4)+'" fill="#6b8296" font-size="15" text-anchor="end">Avg 162</text>';
   s+='<line x1="'+padL+'" y1="'+zeroY+'" x2="'+(W-padR)+'" y2="'+zeroY+'" stroke="#3a4e5e" stroke-dasharray="4 4"/>';
-  s+='<text x="'+(W-padR-4)+'" y="'+(zeroY-4)+'" fill="#55697a" font-size="30" text-anchor="end">0</text>';
+  s+='<text x="'+(W-padR-4)+'" y="'+(zeroY-4)+'" fill="#55697a" font-size="15" text-anchor="end">0</text>';
 
   // midnight boundary line + date label
   const lp=jstParts(leftMs);
   let mn=jstMidnight(lp.y,lp.m,lp.d)+24*3600000;
   for(let k=0;k<2;k++){ if(mn>leftMs&&mn<rightMs){const x=xF(mn);const dp2=jstParts(mn+3600000);
      s+='<line x1="'+x+'" y1="40" x2="'+x+'" y2="'+bot+'" stroke="#2f9bd4" stroke-width="1.5" opacity="0.7"/>';
-     s+='<text x="'+(x+4)+'" y="'+(top-2)+'" fill="#7fb8d8" font-size="30">'+dp2.m+'/'+dp2.d+'</text>';}
+     s+='<text x="'+(x+4)+'" y="'+(top-2)+'" fill="#7fb8d8" font-size="16">'+dp2.m+'/'+dp2.d+'</text>';}
      mn+=24*3600000;}
 
   // hour ticks: 1時間ごと目盛り、3時間ごとに数字
@@ -563,7 +563,7 @@ function render(){
   while(tickMs<rightMs){ if(tickMs>=leftMs){const x=xF(tickMs);const hh=Math.round(jstParts(tickMs).hh)%24;
      const major=(hh%3===0);
      s+='<line x1="'+x+'" y1="'+bot+'" x2="'+x+'" y2="'+(bot+(major?7:4))+'" stroke="'+(major?'#3a5b73':'#2c4658')+'"/>';
-     if(major)s+='<text x="'+x+'" y="'+(bot+46)+'" fill="#5f8299" font-size="38" text-anchor="middle">'+String(hh).padStart(2,'0')+'</text>';}
+     if(major)s+='<text x="'+x+'" y="'+(bot+20)+'" fill="#5f8299" font-size="17" text-anchor="middle">'+String(hh).padStart(2,'0')+'</text>';}
      tickMs+=3600000;}
 
   // tide path
@@ -576,18 +576,18 @@ function render(){
   daysToCheck.forEach((dp)=>{const key='m'+dp.y+dp.m+dp.d;if(seen[key])return;seen[key]=1;
     const r=sunEvent(dp.y,dp.m,dp.d,true), st=sunEvent(dp.y,dp.m,dp.d,false);const midn=jstMidnight(dp.y,dp.m,dp.d);
     if(r!=null){const ms=midn+r*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="70" fill="#f0c05a" font-size="32" text-anchor="middle">☀'+fmtHM(r)+'</text>';}}
+      s+='<text x="'+x+'" y="34" fill="#f0c05a" font-size="16" text-anchor="middle">☀'+fmtHM(r)+'</text>';}}
     if(st!=null){const ms=midn+st*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="70" fill="#f0955a" font-size="32" text-anchor="middle">🌇'+fmtHM(st)+'</text>';}}
+      s+='<text x="'+x+'" y="34" fill="#f0955a" font-size="16" text-anchor="middle">🌇'+fmtHM(st)+'</text>';}}
   });
   // 月の出・月の入りマーカー（第2レール y=50）
   const _seenM={};
   daysToCheck.forEach(dp=>{const key=dp.y+'-'+dp.m+'-'+dp.d;if(_seenM[key])return;_seenM[key]=1;
     const me2=moonEvents(dp.y,dp.m,dp.d);const midn=jstMidnight(dp.y,dp.m,dp.d);
     if(me2.rise!=null){const ms=midn+me2.rise*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="108" fill="#9fc0e0" font-size="32" text-anchor="middle">🌙<tspan font-size="40" font-weight="700">↑</tspan> '+fmtHM(me2.rise)+'</text>';}}
+      s+='<text x="'+x+'" y="51" fill="#9fc0e0" font-size="16" text-anchor="middle">🌙<tspan font-size="22" font-weight="700">↑</tspan> '+fmtHM(me2.rise)+'</text>';}}
     if(me2.set!=null){const ms=midn+me2.set*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="108" fill="#7fa0c0" font-size="32" text-anchor="middle">🌙<tspan font-size="40" font-weight="700">↓</tspan> '+fmtHM(me2.set)+'</text>';}}
+      s+='<text x="'+x+'" y="51" fill="#7fa0c0" font-size="16" text-anchor="middle">🌙<tspan font-size="22" font-weight="700">↓</tspan> '+fmtHM(me2.set)+'</text>';}}
   });
 
   // extrema
@@ -595,8 +595,8 @@ function render(){
     s+='<circle cx="'+x+'" cy="'+yy+'" r="3" fill="#cfe8f5"/>';
     const ly=e.hi?yy-14:yy+22, tw=56;
     s+='<g><rect x="'+(x-tw/2)+'" y="'+(ly-13)+'" width="'+tw+'" height="19" rx="4" fill="#e9eef2"/>'+
-       '<text x="'+x+'" y="'+(ly+1)+'" fill="#12202c" font-size="36" font-weight="700" text-anchor="middle">'+Math.round(e.cm)+'<tspan font-size="22" font-weight="600">cm</tspan></text></g>';
-    s+='<text x="'+x+'" y="'+(e.hi?ly-16:ly+20)+'" fill="#8fb0c4" font-size="30" text-anchor="middle">'+fmtClock(e.ms)+'</text>';
+       '<text x="'+x+'" y="'+(ly+1)+'" fill="#12202c" font-size="18" font-weight="700" text-anchor="middle">'+Math.round(e.cm)+'<tspan font-size="13" font-weight="600">cm</tspan></text></g>';
+    s+='<text x="'+x+'" y="'+(e.hi?ly-16:ly+20)+'" fill="#8fb0c4" font-size="14" text-anchor="middle">'+fmtClock(e.ms)+'</text>';
   });
 
   // now line + (A) 向き矢印・速さ
@@ -608,14 +608,14 @@ function render(){
     // (A) 矢印(上げ↑/下げ↓) + 速さ cm/10min（点のそばに最小限）
     const ar=st.rising?'▲':'▼', arc=st.rising?'#7fc5ec':'#eec16a';
     const lx=x+(x> (W*0.7)? -8 : 10), anch=(x>W*0.7)?'end':'start';
-    s+='<text x="'+lx+'" y="'+(yy-6)+'" fill="'+arc+'" font-size="34" font-weight="800" text-anchor="'+anch+'">'+ar+' '+Math.abs(st.slope).toFixed(1)+'<tspan font-size="22" fill="#9fb8c8">cm/10分</tspan></text>';
+    s+='<text x="'+lx+'" y="'+(yy-6)+'" fill="'+arc+'" font-size="17" font-weight="800" text-anchor="'+anch+'">'+ar+' '+Math.abs(st.slope).toFixed(1)+'<tspan font-size="12" fill="#9fb8c8">cm/10分</tspan></text>';
     s+='<rect x="'+(x-26)+'" y="'+(bot-2)+'" width="52" height="20" rx="4" fill="#e05138"/>'+
-       '<text x="'+x+'" y="'+(bot+12)+'" fill="#fff" font-size="32" font-weight="700" text-anchor="middle">'+Math.round(st.h)+'cm</text>';
+       '<text x="'+x+'" y="'+(bot+12)+'" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">'+Math.round(st.h)+'cm</text>';
   }
   {
    // 日付帯：表示窓に入る各日の区間を上部に貼り付け（0時境界で区切り・ドラッグで一緒に流れる）
-   let band='<rect x="0" y="0" width="'+W+'" height="52" fill="#0e2634" opacity="0.72"/>';
-   band+='<line x1="0" y1="52" x2="'+W+'" y2="52" stroke="#2c6f8c" stroke-width="1.5"/>';
+   let band='<rect x="0" y="0" width="'+W+'" height="32" fill="#0e2634" opacity="0.72"/>';
+   band+='<line x1="0" y1="32" x2="'+W+'" y2="32" stroke="#2c6f8c" stroke-width="1"/>';
    // 窓の左端の日から右端まで、日ごとに区間を描く
    const lp2=jstParts(leftMs);
    let dayStart=jstMidnight(lp2.y,lp2.m,lp2.d);          // 左端の日の0時
@@ -632,7 +632,7 @@ function render(){
      // 日付ラベル（区間中央・区間が狭ければ短縮）
      const wide=(xR-xL)>110;
      const label=wide?(mm+'月'+da+'日（'+WK[wd]+'）'):(mm+'/'+da+'('+WK[wd]+')');
-     if((xR-xL)>34) band+='<text x="'+xc+'" y="37" fill="'+wc+'" font-size="38" font-weight="700" text-anchor="middle">'+label+'</text>';
+     if((xR-xL)>34) band+='<text x="'+xc+'" y="23" fill="'+wc+'" font-size="20" font-weight="700" text-anchor="middle">'+label+'</text>';
      dayStart=dayEnd;
    }
    s+=band;
@@ -951,7 +951,7 @@ function renderWav(){
       foam+='<path d="M '+(x-5)+' '+(y+1)+' Q '+x+' '+(y-3)+' '+(x+5)+' '+(y+1)+'" stroke="#ffffff" stroke-width="1.4" fill="none" opacity="0.9"/>';}}
   // 値ラベル（各セル上に周期）
   let plabels='';rows.forEach((r,i)=>{if(r.wp!=null){const x=i*cellW+cellW/2;
-    plabels+='<text x="'+x+'" y="9" fill="#9fc0d6" font-size="20" text-anchor="middle">'+r.wp.toFixed(1)+'s</text>';}});
+    plabels+='<text x="'+x+'" y="9" fill="#9fc0d6" font-size="9" text-anchor="middle">'+r.wp.toFixed(1)+'s</text>';}});
   const periodRow='<div class="wavrow period" style="height:'+HW+'px"><svg width="100%" height="'+HW+'" viewBox="0 0 '+W+' '+HW+'" preserveAspectRatio="none" style="display:block">'+
     '<defs><linearGradient id="wgrad" x1="0" y1="0" x2="1" y2="0">'+_stops+'</linearGradient></defs>'+
     '<path d="'+fillPath+'" fill="url(#wgrad)" opacity="0.9"/>'+
