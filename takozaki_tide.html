@@ -2,7 +2,15 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=150, viewport-fit=cover">
+<script>
+(function(){try{
+  var v=parseInt(localStorage.getItem('ika_uiscale')||'150',10);
+  if(isNaN(v)) v=150; v=Math.max(120,Math.min(420,v));
+  var m=document.querySelector('meta[name=viewport]');
+  if(m) m.setAttribute('content','width='+v+', viewport-fit=cover');
+}catch(e){}})();
+</script>
 <meta name="theme-color" content="#0c1620">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -105,13 +113,14 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .wxdatebar{margin:8px 12px 0;text-align:center;font-size:15px;font-weight:700;color:#cfe8f5;
     background:#0e2a3d;border:1px solid var(--rule);border-radius:8px;padding:7px 0}
   .wxdays{display:flex;overflow-x:auto;border-top:1px solid var(--line)}
-  .wxday{flex:0 0 auto;min-width:50px;flex:1 1 0;text-align:center;padding:10px 2px;cursor:pointer;border-right:1px solid #1a2b3a;line-height:1.4}
+  .wxday{flex:0 0 auto;width:30px;box-sizing:border-box;text-align:center;padding:9px 1px;cursor:pointer;border-right:1px solid #1a2b3a;line-height:1.35}
   .wxday.on{background:#0e2a3d}
   .wxday .d{font-size:15.5px;font-weight:700} .wxday .w{font-size:12px;color:var(--mut)}
   .wxday.sun .w{color:#e08a7a} .wxday.sat .w{color:#6db6e6}
-  .wxday .tmax{color:#e0836a;font-size:13.5px;font-weight:700} .wxday .tmin{color:#6f9fe0;font-size:13.5px;font-weight:700}
+  .wxday .tmax{display:block;color:#e0836a;font-size:12.5px;font-weight:700} .wxday .tmin{display:block;color:#6f9fe0;font-size:12.5px;font-weight:700}
   .wxday .wxic{font-size:17px;line-height:1;margin:2px 0}
-  .wxdays{overflow-x:hidden}
+  .wxdays{overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x;scrollbar-width:none}
+  .wxdays::-webkit-scrollbar{display:none}
   .wxday .today{display:inline-block;font-size:11.5px;background:#7d6a1e;color:#fff;border-radius:4px;padding:1px 6px;margin-top:2px}
   .wxday .yst,.wavday .yst{display:inline-block;font-size:11.5px;background:#334;color:#b3c2d0;border-radius:4px;padding:1px 6px;margin-top:2px}
   .wxsrc{padding:7px 12px 11px;font-size:12.5px;color:var(--dim)}
@@ -170,7 +179,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .wavgrid{display:flex}
   .wavlabels{flex:0 0 auto;width:58px;border-right:1px solid var(--line);background:#0f1c28}
   .wavlabels .sp{height:24px}
-  .wavlabels .lb{height:46px;display:flex;align-items:center;padding:0 7px;font-size:12.5px;color:#7fb0cc;border-top:1px solid #17222f;line-height:1.25}
+  .wavlabels .lb{height:70px;display:flex;align-items:center;padding:0 7px;font-size:12.5px;color:#7fb0cc;border-top:1px solid #17222f;line-height:1.25}
   .wavscroll{flex:1 1 auto;overflow-x:hidden;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
   .wavscroll.drag{cursor:grabbing}
   .wavscroll::-webkit-scrollbar{display:none}
@@ -178,7 +187,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .wavaxis{height:24px;display:flex}
   .wavaxis .ax{flex:1 1 0;text-align:center;font-size:12.5px;color:#7fb0cc;padding-top:5px;font-variant-numeric:tabular-nums;
     background:linear-gradient(#3a5b73,#3a5b73) 50% 0/1.4px 6px no-repeat,linear-gradient(#2c4658,#2c4658) 16.66% 0/1px 4px no-repeat,linear-gradient(#2c4658,#2c4658) 83.33% 0/1px 4px no-repeat}
-  .wavrow{height:46px;display:flex;align-items:center;border-top:1px solid #17222f;position:relative}
+  .wavrow{height:70px;display:flex;align-items:center;border-top:1px solid #17222f;position:relative}
   .wavrow .c{flex:1 1 0;text-align:center;line-height:1.1}
   .wavrow.waveh .c .n{font-size:16.5px;font-weight:800}
   .wavrow.waveh .c svg{display:block;margin:0 auto}
@@ -210,9 +219,36 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   @keyframes nowpulse{0%,100%{opacity:1}50%{opacity:.35}}
   #chart .nowline{animation:nowpulse 2.2s ease-in-out infinite}
   @media (prefers-reduced-motion:reduce){#chart .nowline{animation:none}}
+  #uiGear{position:fixed;top:8px;right:8px;z-index:200;width:44px;height:44px;border-radius:999px;
+    background:rgba(20,33,46,.92);border:1px solid #2c6f8c;color:#cfe8f5;font-size:22px;cursor:pointer;
+    box-shadow:0 2px 10px #0007;line-height:1}
+  #uiPanel{position:fixed;top:58px;right:8px;left:8px;max-width:420px;margin-left:auto;z-index:200;display:none;
+    background:#14212e;border:1px solid #2c6f8c;border-radius:14px;padding:14px 14px 12px;box-shadow:0 6px 24px #000a}
+  #uiPanel.show{display:block}
+  #uiPanel .uiRow{display:flex;align-items:center;gap:10px;margin:6px 0}
+  #uiPanel .uiRow.uiBig{gap:12px}
+  #uiPanel .uiTtl{font-size:16px;font-weight:800;color:#eaf3fa;flex:1}
+  #uiPanel #uiClose{background:transparent;border:0;color:#9db3c4;font-size:20px;cursor:pointer;padding:4px 8px}
+  #uiPanel .uiAA{background:#0e2a3d;border:1px solid #2c6f8c;color:#cfe8f5;border-radius:10px;
+    font-size:18px;font-weight:800;padding:10px 14px;cursor:pointer;min-width:56px}
+  #uiPanel #uiRange{flex:1;height:34px}
+  #uiPanel .uiHint{font-size:13px;color:#9db3c4;text-align:center;margin:8px 0 4px;line-height:1.5}
+  #uiPanel .uiReset{background:transparent;border:1px solid #3a5b73;color:#bcd8ea;border-radius:9px;
+    font-size:14px;padding:8px 16px;cursor:pointer}
 </style>
 </head>
 <body>
+<button id="uiGear" aria-label="表示設定" title="表示サイズ">⚙</button>
+<div id="uiPanel">
+  <div class="uiRow"><span class="uiTtl">表示サイズ</span><button id="uiClose">✕</button></div>
+  <div class="uiRow uiBig">
+    <button id="uiMinus" class="uiAA">A−</button>
+    <input id="uiRange" type="range" min="120" max="420" step="10" value="150">
+    <button id="uiPlus" class="uiAA">A＋</button>
+  </div>
+  <div class="uiHint">大きく ← → 小さく／設定は自動保存されます</div>
+  <div class="uiRow" style="justify-content:center"><button id="uiReset" class="uiReset">標準に戻す</button></div>
+</div>
 <header>
   <div class="top">
     <button class="backbtn" id="backbtn" title="一覧へ戻る">‹</button>
@@ -233,7 +269,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
 </div>
 <div class="nowbar" id="nowbar"></div>
 <div class="infobar" id="infobar"></div>
-<div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 720 500" preserveAspectRatio="xMidYMid meet"></svg></div>
+<div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 720 720" preserveAspectRatio="xMidYMid meet"></svg></div>
 <div class="panel">
   <div class="phd" id="seahd">海面情報（高後崎・基準値）</div>
   <div class="sea">
@@ -257,7 +293,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
     <div class="t" id="wxtitle">天気予報・近況 <small>（風）</small></div>
     <div class="menu" id="wxmenu">
       <button data-v="arrow" class="on">一覧</button>
-      <button data-v="table">判定</button>
+      <button data-v="table">詳細</button>
     </div>
     <button class="wxnowbtn" id="wxnowbtn" title="現在時刻へ" aria-label="現在時刻へ">◉</button>
   </div>
@@ -478,7 +514,7 @@ function render(){
   }
   const exf=[]; ext.forEach(e=>{if(!exf.length||(e.ms-exf[exf.length-1].ms)>0.6*3600000)exf.push(e);});
 
-  const W=720,Hh=500,padL=8,padR=8,top=70,bot=446,yMax=500;
+  const W=720,Hh=720,padL=8,padR=8,top=124,bot=636,yMax=720;
   const xF=ms=>padL+(ms-leftMs)/WIN*(W-padL-padR);
   const yF=cm=>bot-(cm/yMax)*(bot-top);
   let s='';
@@ -509,16 +545,16 @@ function render(){
   // grid
   const avgY=yF(Z0), zeroY=yF(0);
   s+='<line x1="'+padL+'" y1="'+avgY+'" x2="'+(W-padR)+'" y2="'+avgY+'" stroke="#4a6274"/>';
-  s+='<text x="'+(W-padR-4)+'" y="'+(avgY-4)+'" fill="#6b8296" font-size="15" text-anchor="end">Avg 162</text>';
+  s+='<text x="'+(W-padR-4)+'" y="'+(avgY-4)+'" fill="#6b8296" font-size="30" text-anchor="end">Avg 162</text>';
   s+='<line x1="'+padL+'" y1="'+zeroY+'" x2="'+(W-padR)+'" y2="'+zeroY+'" stroke="#3a4e5e" stroke-dasharray="4 4"/>';
-  s+='<text x="'+(W-padR-4)+'" y="'+(zeroY-4)+'" fill="#55697a" font-size="15" text-anchor="end">0</text>';
+  s+='<text x="'+(W-padR-4)+'" y="'+(zeroY-4)+'" fill="#55697a" font-size="30" text-anchor="end">0</text>';
 
   // midnight boundary line + date label
   const lp=jstParts(leftMs);
   let mn=jstMidnight(lp.y,lp.m,lp.d)+24*3600000;
   for(let k=0;k<2;k++){ if(mn>leftMs&&mn<rightMs){const x=xF(mn);const dp2=jstParts(mn+3600000);
      s+='<line x1="'+x+'" y1="40" x2="'+x+'" y2="'+bot+'" stroke="#2f9bd4" stroke-width="1.5" opacity="0.7"/>';
-     s+='<text x="'+(x+4)+'" y="'+(top-2)+'" fill="#7fb8d8" font-size="16">'+dp2.m+'/'+dp2.d+'</text>';}
+     s+='<text x="'+(x+4)+'" y="'+(top-2)+'" fill="#7fb8d8" font-size="30">'+dp2.m+'/'+dp2.d+'</text>';}
      mn+=24*3600000;}
 
   // hour ticks: 1時間ごと目盛り、3時間ごとに数字
@@ -527,7 +563,7 @@ function render(){
   while(tickMs<rightMs){ if(tickMs>=leftMs){const x=xF(tickMs);const hh=Math.round(jstParts(tickMs).hh)%24;
      const major=(hh%3===0);
      s+='<line x1="'+x+'" y1="'+bot+'" x2="'+x+'" y2="'+(bot+(major?7:4))+'" stroke="'+(major?'#3a5b73':'#2c4658')+'"/>';
-     if(major)s+='<text x="'+x+'" y="'+(bot+20)+'" fill="#5f8299" font-size="17" text-anchor="middle">'+String(hh).padStart(2,'0')+'</text>';}
+     if(major)s+='<text x="'+x+'" y="'+(bot+46)+'" fill="#5f8299" font-size="38" text-anchor="middle">'+String(hh).padStart(2,'0')+'</text>';}
      tickMs+=3600000;}
 
   // tide path
@@ -540,18 +576,18 @@ function render(){
   daysToCheck.forEach((dp)=>{const key='m'+dp.y+dp.m+dp.d;if(seen[key])return;seen[key]=1;
     const r=sunEvent(dp.y,dp.m,dp.d,true), st=sunEvent(dp.y,dp.m,dp.d,false);const midn=jstMidnight(dp.y,dp.m,dp.d);
     if(r!=null){const ms=midn+r*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="34" fill="#f0c05a" font-size="16" text-anchor="middle">☀'+fmtHM(r)+'</text>';}}
+      s+='<text x="'+x+'" y="70" fill="#f0c05a" font-size="32" text-anchor="middle">☀'+fmtHM(r)+'</text>';}}
     if(st!=null){const ms=midn+st*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="34" fill="#f0955a" font-size="16" text-anchor="middle">🌇'+fmtHM(st)+'</text>';}}
+      s+='<text x="'+x+'" y="70" fill="#f0955a" font-size="32" text-anchor="middle">🌇'+fmtHM(st)+'</text>';}}
   });
   // 月の出・月の入りマーカー（第2レール y=50）
   const _seenM={};
   daysToCheck.forEach(dp=>{const key=dp.y+'-'+dp.m+'-'+dp.d;if(_seenM[key])return;_seenM[key]=1;
     const me2=moonEvents(dp.y,dp.m,dp.d);const midn=jstMidnight(dp.y,dp.m,dp.d);
     if(me2.rise!=null){const ms=midn+me2.rise*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="51" fill="#9fc0e0" font-size="16" text-anchor="middle">🌙<tspan font-size="22" font-weight="700">↑</tspan> '+fmtHM(me2.rise)+'</text>';}}
+      s+='<text x="'+x+'" y="108" fill="#9fc0e0" font-size="32" text-anchor="middle">🌙<tspan font-size="40" font-weight="700">↑</tspan> '+fmtHM(me2.rise)+'</text>';}}
     if(me2.set!=null){const ms=midn+me2.set*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="51" fill="#7fa0c0" font-size="16" text-anchor="middle">🌙<tspan font-size="22" font-weight="700">↓</tspan> '+fmtHM(me2.set)+'</text>';}}
+      s+='<text x="'+x+'" y="108" fill="#7fa0c0" font-size="32" text-anchor="middle">🌙<tspan font-size="40" font-weight="700">↓</tspan> '+fmtHM(me2.set)+'</text>';}}
   });
 
   // extrema
@@ -559,8 +595,8 @@ function render(){
     s+='<circle cx="'+x+'" cy="'+yy+'" r="3" fill="#cfe8f5"/>';
     const ly=e.hi?yy-14:yy+22, tw=56;
     s+='<g><rect x="'+(x-tw/2)+'" y="'+(ly-13)+'" width="'+tw+'" height="19" rx="4" fill="#e9eef2"/>'+
-       '<text x="'+x+'" y="'+(ly+1)+'" fill="#12202c" font-size="18" font-weight="700" text-anchor="middle">'+Math.round(e.cm)+'<tspan font-size="13" font-weight="600">cm</tspan></text></g>';
-    s+='<text x="'+x+'" y="'+(e.hi?ly-16:ly+20)+'" fill="#8fb0c4" font-size="14" text-anchor="middle">'+fmtClock(e.ms)+'</text>';
+       '<text x="'+x+'" y="'+(ly+1)+'" fill="#12202c" font-size="36" font-weight="700" text-anchor="middle">'+Math.round(e.cm)+'<tspan font-size="22" font-weight="600">cm</tspan></text></g>';
+    s+='<text x="'+x+'" y="'+(e.hi?ly-16:ly+20)+'" fill="#8fb0c4" font-size="30" text-anchor="middle">'+fmtClock(e.ms)+'</text>';
   });
 
   // now line + (A) 向き矢印・速さ
@@ -572,14 +608,14 @@ function render(){
     // (A) 矢印(上げ↑/下げ↓) + 速さ cm/10min（点のそばに最小限）
     const ar=st.rising?'▲':'▼', arc=st.rising?'#7fc5ec':'#eec16a';
     const lx=x+(x> (W*0.7)? -8 : 10), anch=(x>W*0.7)?'end':'start';
-    s+='<text x="'+lx+'" y="'+(yy-6)+'" fill="'+arc+'" font-size="17" font-weight="800" text-anchor="'+anch+'">'+ar+' '+Math.abs(st.slope).toFixed(1)+'<tspan font-size="12" fill="#9fb8c8">cm/10分</tspan></text>';
+    s+='<text x="'+lx+'" y="'+(yy-6)+'" fill="'+arc+'" font-size="34" font-weight="800" text-anchor="'+anch+'">'+ar+' '+Math.abs(st.slope).toFixed(1)+'<tspan font-size="22" fill="#9fb8c8">cm/10分</tspan></text>';
     s+='<rect x="'+(x-26)+'" y="'+(bot-2)+'" width="52" height="20" rx="4" fill="#e05138"/>'+
-       '<text x="'+x+'" y="'+(bot+12)+'" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">'+Math.round(st.h)+'cm</text>';
+       '<text x="'+x+'" y="'+(bot+12)+'" fill="#fff" font-size="32" font-weight="700" text-anchor="middle">'+Math.round(st.h)+'cm</text>';
   }
   {
    // 日付帯：表示窓に入る各日の区間を上部に貼り付け（0時境界で区切り・ドラッグで一緒に流れる）
-   let band='<rect x="0" y="0" width="'+W+'" height="32" fill="#0e2634" opacity="0.72"/>';
-   band+='<line x1="0" y1="32" x2="'+W+'" y2="32" stroke="#2c6f8c" stroke-width="1"/>';
+   let band='<rect x="0" y="0" width="'+W+'" height="52" fill="#0e2634" opacity="0.72"/>';
+   band+='<line x1="0" y1="52" x2="'+W+'" y2="52" stroke="#2c6f8c" stroke-width="1.5"/>';
    // 窓の左端の日から右端まで、日ごとに区間を描く
    const lp2=jstParts(leftMs);
    let dayStart=jstMidnight(lp2.y,lp2.m,lp2.d);          // 左端の日の0時
@@ -596,7 +632,7 @@ function render(){
      // 日付ラベル（区間中央・区間が狭ければ短縮）
      const wide=(xR-xL)>110;
      const label=wide?(mm+'月'+da+'日（'+WK[wd]+'）'):(mm+'/'+da+'('+WK[wd]+')');
-     if((xR-xL)>34) band+='<text x="'+xc+'" y="23" fill="'+wc+'" font-size="20" font-weight="700" text-anchor="middle">'+label+'</text>';
+     if((xR-xL)>34) band+='<text x="'+xc+'" y="37" fill="'+wc+'" font-size="38" font-weight="700" text-anchor="middle">'+label+'</text>';
      dayStart=dayEnd;
    }
    s+=band;
@@ -648,7 +684,7 @@ function updateNowbar(){
   let nx='';
   if(st.next){const p=jstParts(st.next.ms);const mins=Math.round((st.next.ms-Date.now())/60000);
     const hh=Math.floor(mins/60), mm=mins%60;
-    nx='次の'+(st.next.hi?'満潮':'干潮')+' <b>'+fmtHM(p.hh)+'</b>（あと'+(hh>0?hh+'h':'')+mm+'m）／ '+Math.round(tide(st.next.ms))+'cm';}
+    nx='次の'+(st.next.hi?'満潮':'干潮')+' <b>'+fmtHM(p.hh)+'</b>（あと'+(hh>0?hh+'時間':'')+mm+'分）／ '+Math.round(tide(st.next.ms))+'cm';}
   nb.innerHTML='<span class="cm">現在 '+Math.round(st.h)+'cm</span>'+
     '<span class="dir '+dirCls+'">'+dirTxt+'</span>'+
     '<span style="color:#9fb8c8">'+Math.abs(st.slope).toFixed(1)+'cm/10分</span>'+
@@ -850,7 +886,7 @@ function tableHTML(){const rows=WXDATA.days[WXDATA.keys[wxDay]].rows;
   return h;}
 function wxRender(){
   if(!WXDATA)return;
-  document.getElementById('wxtitle').innerHTML='天気予報・近況 <small>（'+(wxView==='arrow'?'風':wxView==='wave'?'波浪':'判定')+'）</small>'+(WXSAMPLE?'<span class="wxdemo">サンプル</span>':'')+(WXOFFLINE?'<span class="wxoff">オフライン '+fmtCacheT(WXCACHET)+'取得</span>':'');
+  document.getElementById('wxtitle').innerHTML='天気予報・近況 <small>（'+(wxView==='arrow'?'風':wxView==='wave'?'波浪':'詳細')+'）</small>'+(WXSAMPLE?'<span class="wxdemo">サンプル</span>':'')+(WXOFFLINE?'<span class="wxoff">オフライン '+fmtCacheT(WXCACHET)+'取得</span>':'');
   document.getElementById('wxbody').innerHTML=(wxView==='arrow'?arrowHTML():(tableHTML()+dayTabsHTML()));
   document.querySelectorAll('#wxmenu button').forEach(b=>b.classList.toggle('on',b.dataset.v===wxView));
   { const nb=document.getElementById('wxnowbtn'); if(nb) nb.hidden=(wxView!=='arrow'); }
@@ -875,7 +911,7 @@ function renderWav(){
   // 時間軸
   let axis='';rows.forEach(r=>{axis+='<div class="ax">'+String(r.hr).padStart(2,'0')+'</div>';});
   // 周期＝波の間隔、波高＝波の高さ、で"海の波の絵"を描く（白波付き）
-  const HW=52, baseY=44;                          // 行高・海面下端
+  const HW=78, baseY=66;                          // 行高・海面下端
   const perAt=x=>{const f=x/cellW-0.5; let i=Math.floor(f); i=Math.max(0,Math.min(rows.length-2,i));
     const a=rows[i]&&rows[i].wp!=null?rows[i].wp:6, b=rows[i+1]&&rows[i+1].wp!=null?rows[i+1].wp:a;
     const t=Math.max(0,Math.min(1,f-i)); return a+(b-a)*t;};
@@ -886,12 +922,12 @@ function renderWav(){
   let top='M 0 '+baseY, phase=0; const step=2, kBase=2.2;
   const crests=[]; let prevY=baseY, prevSlope=0;
   const yAt=x=>{const per=perAt(Math.min(x,W-1)); const wh=whAt(Math.min(x,W-1));
-    const amp=Math.max(3,Math.min(20, wh*100*0.13));   // 波高cm→振幅px
-    return {y:baseY-8-amp - amp*Math.sin(phase), amp};};
+    const amp=Math.max(4,Math.min(30, wh*100*0.19));   // 波高cm→振幅px
+    return {y:baseY-13-amp - amp*Math.sin(phase), amp};};
   let pts=[];
   for(let x=0;x<=W;x+=step){const per=perAt(Math.min(x,W-1)); phase+=step*(kBase/per);
-    const wh=whAt(Math.min(x,W-1)); const amp=Math.max(3,Math.min(20, wh*100*0.13));
-    const y=baseY-9-amp - amp*Math.sin(phase);
+    const wh=whAt(Math.min(x,W-1)); const amp=Math.max(4,Math.min(30, wh*100*0.19));
+    const y=baseY-13-amp - amp*Math.sin(phase);
     pts.push([x,y,amp,Math.cos(phase)]);
     top+=' L '+x.toFixed(1)+' '+y.toFixed(1);}
   const fillPath=top+' L '+W+' '+baseY+' L 0 '+baseY+' Z';
@@ -915,7 +951,7 @@ function renderWav(){
       foam+='<path d="M '+(x-5)+' '+(y+1)+' Q '+x+' '+(y-3)+' '+(x+5)+' '+(y+1)+'" stroke="#ffffff" stroke-width="1.4" fill="none" opacity="0.9"/>';}}
   // 値ラベル（各セル上に周期）
   let plabels='';rows.forEach((r,i)=>{if(r.wp!=null){const x=i*cellW+cellW/2;
-    plabels+='<text x="'+x+'" y="9" fill="#9fc0d6" font-size="9" text-anchor="middle">'+r.wp.toFixed(1)+'s</text>';}});
+    plabels+='<text x="'+x+'" y="9" fill="#9fc0d6" font-size="20" text-anchor="middle">'+r.wp.toFixed(1)+'s</text>';}});
   const periodRow='<div class="wavrow period" style="height:'+HW+'px"><svg width="100%" height="'+HW+'" viewBox="0 0 '+W+' '+HW+'" preserveAspectRatio="none" style="display:block">'+
     '<defs><linearGradient id="wgrad" x1="0" y1="0" x2="1" y2="0">'+_stops+'</linearGradient></defs>'+
     '<path d="'+fillPath+'" fill="url(#wgrad)" opacity="0.9"/>'+
@@ -939,7 +975,7 @@ function renderWav(){
   const dm=document.getElementById('wavdemo'); if(dm) dm.hidden=!WXSAMPLE;
   document.getElementById('wavbody').innerHTML=
     '<div class="wavgrid"><div class="wavlabels"><div class="sp"></div>'+
-      '<div class="lb" style="height:52px">周期<br>(秒)</div><div class="lb">波高(cm)<br><span style="font-size:11px;color:#7c96a8">↑波の進む向き</span></div><div class="lb">うねり<br>(cm)</div><div class="lb">水温<br>(℃)</div></div>'+
+      '<div class="lb" style="height:78px">周期<br>(秒)</div><div class="lb">波高(cm)<br><span style="font-size:11px;color:#7c96a8">↑波の進む向き</span></div><div class="lb">うねり<br>(cm)</div><div class="lb">水温<br>(℃)</div></div>'+
     '<div class="wavscroll" id="wavscroll"><div style="width:100%;position:relative">'+nowl+
       '<div class="wavaxis">'+axis+'</div>'+periodRow+
       '<div class="wavrow waveh">'+wh+'</div>'+
@@ -1043,10 +1079,33 @@ wxGo(); warnGo(); setInterval(warnGo,600000);
     const p=new URLSearchParams({lat:wlat,lon:wlon,detailLat:wlat,detailLon:wlon,zoom:'12',level:'surface',
       overlay:'wind',menu:'',message:'true',marker:'true',calendar:'now',pressure:'',type:'map',
       location:'coordinates',detail:'true',metricWind:'m/s',metricTemp:'°C',radarRange:'-1'});
-    const f=document.getElementById('windy'); if(f) f.src='https://embed.windy.com/embed2.html?'+p.toString();}
+    const f=document.getElementById('windy'); if(f){f.onload=function(){const ph=document.getElementById('windph');if(ph)ph.style.display='none';};f.src='https://embed.windy.com/embed2.html?'+p.toString();}}
   document.querySelectorAll('#windspots button').forEach(b=>b.onclick=()=>{wlat=b.dataset.lat;wlon=b.dataset.lon;
     document.querySelectorAll('#windspots button').forEach(x=>x.classList.toggle('on',x===b));buildWindy();});
   buildWindy();
+})();
+</script>
+<script>
+(function(){
+  var KEY='ika_uiscale', DEF=150;
+  function get(){var v=parseInt(localStorage.getItem(KEY)||DEF,10);return isNaN(v)?DEF:Math.max(120,Math.min(420,v));}
+  function apply(v){v=Math.max(120,Math.min(420,v));
+    var m=document.querySelector('meta[name=viewport]');
+    if(m) m.setAttribute('content','width='+v+', viewport-fit=cover');
+    try{localStorage.setItem(KEY,String(v));}catch(e){}
+    var r=document.getElementById('uiRange'); if(r) r.value=v;}
+  // 注意：スライダーは「右=小さい」の直感に合わせ、値を反転表示
+  var gear=document.getElementById('uiGear'), panel=document.getElementById('uiPanel');
+  var range=document.getElementById('uiRange');
+  gear.onclick=function(){panel.classList.toggle('show');};
+  document.getElementById('uiClose').onclick=function(){panel.classList.remove('show');};
+  range.value=get();
+  // スライダー：左に動かすほど「大きく」したい → min/maxはpx(小さいpx=大きい表示)。
+  // つまりスライダーを左(=小さいpx)にすると表示が大きくなる。ラベルで補足済み。
+  range.addEventListener('input',function(){apply(parseInt(range.value,10));});
+  document.getElementById('uiPlus').onclick=function(){apply(get()-20);};   // A+ = px下げて拡大
+  document.getElementById('uiMinus').onclick=function(){apply(get()+20);};  // A- = px上げて縮小
+  document.getElementById('uiReset').onclick=function(){apply(DEF);};
 })();
 </script>
 </body>
