@@ -986,23 +986,37 @@ function renderWav(){
   let axis='';rows.forEach(r=>{axis+='<div class="ax">'+String(r.hr).padStart(2,'0')+'</div>';});
   // 周期＝波の間隔、波高＝波の高さ、で"海の波の絵"を描く（白波付き）
   const HW=64;                                    // 面グラフの高さ
-  const wvMax=200;                                 // 200cm=満杯の目安
+  let _dmax=0; rows.forEach(r=>{if(r.wh!=null){const c=r.wh*100; if(c>_dmax)_dmax=c;} if(r.sh!=null){const c=r.sh*100; if(c>_dmax)_dmax=c;}});
+  const wvMax=Math.max(50, _dmax*1.18);            // その日の波に合わせ縦を使い切る（最小50cm）
   const N=rows.length;
   const xAt=i=> N>1 ? i/(N-1)*W : W/2;
   const yAt=cm=> HW - Math.min(HW, Math.max(0,cm)/wvMax*HW);
-  // うねり(下層)＋風波(上層＝全体との差)の面グラフ
-  let totLine='', swLine='';
-  for(let i=0;i<N;i++){const wh=(rows[i].wh!=null?rows[i].wh:0)*100, sh=(rows[i].sh!=null?rows[i].sh:0)*100;
-    totLine+=(i?' L ':'M ')+xAt(i).toFixed(1)+' '+yAt(wh).toFixed(1);
-    swLine +=(i?' L ':'M ')+xAt(i).toFixed(1)+' '+yAt(sh).toFixed(1);}
-  const totArea='M 0 '+HW+' '+totLine.replace('M ','L ')+' L '+W+' '+HW+' Z';
-  const swArea ='M 0 '+HW+' '+swLine.replace('M ','L ')+' L '+W+' '+HW+' Z';
+  // 補間ヘルパ（ピクセル位置で線形補間）
+  const fieldAt=(px,key)=>{const t=(N>1)?px/W*(N-1):0; let i=Math.floor(t); i=Math.max(0,Math.min(N-2,i)); const f=t-i;
+    const a=(rows[i]&&rows[i][key]!=null?rows[i][key]:0), b=(rows[i+1]&&rows[i+1][key]!=null?rows[i+1][key]:a); return a+(b-a)*f;};
+  // うねり＝なめらかな下層
+  let swLine='';
+  for(let i=0;i<N;i++){const sh=(rows[i].sh!=null?rows[i].sh:0)*100; swLine+=(i?' L ':'M ')+xAt(i).toFixed(1)+' '+yAt(sh).toFixed(1);}
+  const swArea='M 0 '+HW+' '+swLine.replace('M ','L ')+' L '+W+' '+HW+' Z';
+  // 全体波の表面＝風波ぶんを細かいギザギザ（さざ波）で
+  let topPts=[]; const stepPx=3;
+  for(let px=0;px<=W;px+=stepPx){
+    const wh=fieldAt(px,'wh')*100, sh=fieldAt(px,'sh')*100;
+    const ww=Math.sqrt(Math.max(0,wh*wh-sh*sh));          // 風波成分
+    const meanY=yAt(wh);
+    const chopPx=Math.min(10,(ww/wvMax*HW)*0.6);           // 風波が大=ギザギザ大
+    const wp=fieldAt(px,'wp')||5; const rip=Math.max(6,Math.min(18,wp*2));  // 短周期=細かい
+    const y=Math.max(0.5, meanY - chopPx*Math.sin(px/rip*2*Math.PI));
+    topPts.push(px.toFixed(1)+' '+y.toFixed(1));
+  }
+  const topLine='M '+topPts.join(' L ');
+  const totArea='M 0 '+HW+' L '+topPts.join(' L ')+' L '+W+' '+HW+' Z';
   let plab='';
   for(let i=0;i<N;i++){if(rows[i].wp!=null)plab+='<text x="'+xAt(i).toFixed(1)+'" y="10" fill="#9fc0d6" font-size="9" text-anchor="middle">'+rows[i].wp.toFixed(1)+'s</text>';}
   const periodRow='<div class="wavrow period" style="height:'+HW+'px"><svg width="100%" height="'+HW+'" viewBox="0 0 '+W+' '+HW+'" preserveAspectRatio="none" style="display:block">'+
     '<path d="'+totArea+'" fill="#8fd6f0" opacity="0.85"/>'+
     '<path d="'+swArea+'" fill="#2f7fb8"/>'+
-    '<path d="'+totLine+'" fill="none" stroke="#cdeafb" stroke-width="1.5"/>'+
+    '<path d="'+topLine+'" fill="none" stroke="#dff1fc" stroke-width="1.2"/>'+
     '<line x1="0" y1="'+(HW-0.5)+'" x2="'+W+'" y2="'+(HW-0.5)+'" stroke="#22384a" stroke-width="1"/>'+plab+'</svg></div>';
 
   // ===== 詳細コメント（総合判定・推移・風・狙い目・警告） =====
