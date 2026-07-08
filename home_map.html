@@ -175,6 +175,8 @@ const FAV_KEY='ikafav_points_v1';
 const FAV_DEFAULT=[
   {name:'崎戸ウオーターデッキ',lat:33.0206,lon:129.5637},
   {name:'太田尾',lat:33.0397,lon:129.5906},
+  {name:'塩田漁港',lat:33.052967,lon:129.600589},
+  {name:'黒瀬',lat:33.0610,lon:129.6360},
 ];
 function loadFavs(){
   try{const raw=localStorage.getItem(FAV_KEY);
@@ -193,6 +195,23 @@ const STATIONS=[
   {name:'佐世保',lat:33.158,lon:129.722},
   {name:'福江', lat:32.694,lon:128.842},
 ];
+
+// ===== 改正数（時刻差）: 公開の改正数表＋実測照合で確認できた値のみ適用 =====
+// 崎戸(-10分): 佐世保基準の公開改正数と、chowari実測との照合が一致(2026-07-08時点、小潮のため参考値)
+// 太田尾: 崎戸と同一海域(3.4km)のため暫定で同値を適用（未実測・確信度は崎戸より低い）
+const TOFF_TABLE=[
+  {lat:33.0206,lon:129.5637,toff:-10,note:'崎戸'},
+  {lat:33.0397,lon:129.5906,toff:-10,note:'太田尾(崎戸近傍で暫定)'},
+  {lat:33.052967,lon:129.600589,toff:-10,note:'塩田漁港(同海域暫定)'},
+  {lat:33.0610,lon:129.6360,toff:-10,note:'黒瀬(同海域暫定)'},
+];
+function findToff(lat,lon){
+  for(const t of TOFF_TABLE){
+    const d=Math.sqrt((lat-t.lat)**2+(lon-t.lon)**2)*111; // 概算km
+    if(d<2) return t.toff;
+  }
+  return 0;
+}
 function nearestStation(lat,lon){let best=STATIONS[0],bd=1e9;
   for(const s of STATIONS){const d=(s.lat-lat)**2+(s.lon-lon)**2; if(d<bd){bd=d;best=s;}}
   return best.name;}
@@ -275,7 +294,7 @@ function renderMatrix(days,results){
     toast(el.dataset.mg+' 月の明るさ（照度）'+el.dataset.il+'%');});
   document.querySelectorAll('.mx .cell,.mx .pn').forEach(el=>el.onclick=()=>{const f=favs[+el.dataset.i];if(!f)return;
     const station=nearestStation(f.lat,f.lon);
-    location.href='takozaki_tide.html?'+new URLSearchParams({name:f.name,lat:f.lat,lon:f.lon,station:station}).toString();});}
+    location.href='takozaki_tide.html?'+new URLSearchParams({name:f.name,lat:f.lat,lon:f.lon,station:station,toff:findToff(f.lat,f.lon)}).toString();});}
 
 
 // ---------- 本物のMapLibre（ブラウザ時） ----------
@@ -399,7 +418,7 @@ function renderFavs(){
     const f=favs[+row.dataset.i];
     // 最寄り験潮所（外洋は当面すべて高後崎）→ 後で験潮所リストから自動選択に拡張
     const station=nearestStation(f.lat,f.lon);
-    const q=new URLSearchParams({name:f.name,lat:f.lat,lon:f.lon,station:station});
+    const q=new URLSearchParams({name:f.name,lat:f.lat,lon:f.lon,station:station,toff:findToff(f.lat,f.lon)});
     location.href='takozaki_tide.html?'+q.toString();});
   el.querySelectorAll('.edit').forEach(b=>b.onclick=e=>{e.stopPropagation();openRename(+b.dataset.e);});
   el.querySelectorAll('.del').forEach(b=>b.onclick=e=>{e.stopPropagation();favs.splice(+b.dataset.d,1);saveFavs();renderFavs();drawMarkers();buildMatrix();});
