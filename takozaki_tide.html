@@ -166,6 +166,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .alerttext .src{display:block;margin-top:8px;font-size:12px;color:var(--dim)}
   .alerttext.empty{display:none}
   .windname{font-size:12px;color:#cfe8f5;font-weight:700;background:#0e2a3d;border:1px solid var(--rule);border-radius:999px;padding:3px 11px}
+  #windOpen{margin-left:6px;font-size:12px;font-weight:700;color:#04121c;background:var(--tide);border:0;border-radius:999px;padding:4px 12px;cursor:pointer}
   .windblock{margin:14px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .windframe{position:relative;background:#071019}
   .windframe iframe{display:block;width:100%;height:448px;border:0}
@@ -199,13 +200,13 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .note{margin:10px 12px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;
     padding:13px 15px;color:var(--dim);font-size:12.5px;line-height:1.8}
   .note b{color:var(--mut)}
-  .infobar{display:flex;gap:14px;flex-wrap:wrap;padding:10px 14px 0;color:var(--mut);font-size:12px}
+  .infobar{display:flex;gap:16px;flex-wrap:wrap;padding:12px 14px 2px;color:var(--mut);font-size:24px;line-height:1.5}
   .infobar b{color:var(--ink)}
   .infobar .sun{color:#f0c05a} .infobar .warn{color:#e3a72c} .infobar .moonl{color:#9fc0e0}
   .nowbar{margin:10px 12px 0;background:#12303f;border:1px solid #2c6f8c;border-radius:10px;
-    padding:9px 13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}
-  .nowbar .cm{font-size:19px;font-weight:800;color:#eaf3f9}
-  .nowbar .dir{font-weight:800;padding:2px 9px;border-radius:999px;font-size:13px}
+    padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:24px;line-height:1.5}
+  .nowbar .cm{font-size:34px;font-weight:800;color:#eaf3f9}
+  .nowbar .dir{font-weight:800;padding:4px 12px;border-radius:999px;font-size:22px}
   .nowbar .up{background:#2f9bd433;color:#7fc5ec;border:1px solid #2f9bd4}
   .nowbar .down{background:#e3a72c22;color:#eec16a;border:1px solid #c8901f}
   .nowbar .nx{color:var(--mut)} .nowbar .nx b{color:var(--ink)}
@@ -325,7 +326,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
 <div class="windblock" id="windblock">
   <div class="wxhead">
     <div class="t">風レイヤー <small>（Windy）</small></div>
-    <div class="menu" id="windspots"><span class="windname" id="windname">—</span></div>
+    <div class="menu" id="windspots"><span class="windname" id="windname">—</span><button id="windOpen" title="Windyを別窓で開く">⤢ 開く</button></div>
   </div>
   <div class="windframe">
     <iframe id="windy" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
@@ -562,7 +563,7 @@ function render(){
   }
   const exf=[]; ext.forEach(e=>{if(!exf.length||(e.ms-exf[exf.length-1].ms)>0.6*3600000)exf.push(e);});
 
-  const W=720,Hh=640,padL=8,padR=8,top=70,bot=580,yMin=-20,yMax=340;
+  const W=720,Hh=640,padL=8,padR=8,top=112,bot=580,yMin=-20,yMax=340;
   const xF=ms=>padL+(ms-leftMs)/WIN*(W-padL-padR);
   const yF=cm=>bot-((cm-yMin)/(yMax-yMin))*(bot-top);
   let s='';
@@ -624,27 +625,27 @@ function render(){
   daysToCheck.forEach((dp)=>{const key='m'+dp.y+dp.m+dp.d;if(seen[key])return;seen[key]=1;
     const r=sunEvent(dp.y,dp.m,dp.d,true), st=sunEvent(dp.y,dp.m,dp.d,false);const midn=jstMidnight(dp.y,dp.m,dp.d);
     if(r!=null){const ms=midn+r*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="34" fill="#f0c05a" font-size="16" text-anchor="middle">☀'+fmtHM(r)+'</text>';}}
+      s+='<text x="'+x+'" y="58" fill="#f0c05a" font-size="32" text-anchor="middle">☀'+fmtHM(r)+'</text>';}}
     if(st!=null){const ms=midn+st*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="34" fill="#f0955a" font-size="16" text-anchor="middle">🌇'+fmtHM(st)+'</text>';}}
+      s+='<text x="'+x+'" y="58" fill="#f0955a" font-size="32" text-anchor="middle">🌇'+fmtHM(st)+'</text>';}}
   });
   // 月の出・月の入りマーカー（第2レール y=50）
   const _seenM={};
   daysToCheck.forEach(dp=>{const key=dp.y+'-'+dp.m+'-'+dp.d;if(_seenM[key])return;_seenM[key]=1;
     const me2=moonEvents(dp.y,dp.m,dp.d);const midn=jstMidnight(dp.y,dp.m,dp.d);
     if(me2.rise!=null){const ms=midn+me2.rise*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="51" fill="#9fc0e0" font-size="16" text-anchor="middle">🌙<tspan font-size="22" font-weight="700">↑</tspan> '+fmtHM(me2.rise)+'</text>';}}
+      s+='<text x="'+x+'" y="98" fill="#9fc0e0" font-size="32" text-anchor="middle">🌙<tspan font-size="40" font-weight="700">↑</tspan> '+fmtHM(me2.rise)+'</text>';}}
     if(me2.set!=null){const ms=midn+me2.set*3600000;if(ms>leftMs&&ms<rightMs){const x=xF(ms);
-      s+='<text x="'+x+'" y="51" fill="#7fa0c0" font-size="16" text-anchor="middle">🌙<tspan font-size="22" font-weight="700">↓</tspan> '+fmtHM(me2.set)+'</text>';}}
+      s+='<text x="'+x+'" y="98" fill="#7fa0c0" font-size="32" text-anchor="middle">🌙<tspan font-size="40" font-weight="700">↓</tspan> '+fmtHM(me2.set)+'</text>';}}
   });
 
   // extrema
   exf.forEach(e=>{const x=xF(e.ms),yy=yF(e.cm);
     s+='<circle cx="'+x+'" cy="'+yy+'" r="3" fill="#cfe8f5"/>';
-    const ly=e.hi?yy-14:yy+22, tw=56;
-    s+='<g><rect x="'+(x-tw/2)+'" y="'+(ly-13)+'" width="'+tw+'" height="19" rx="4" fill="#e9eef2"/>'+
-       '<text x="'+x+'" y="'+(ly+1)+'" fill="#12202c" font-size="18" font-weight="700" text-anchor="middle">'+Math.round(e.cm)+'<tspan font-size="13" font-weight="600">cm</tspan></text></g>';
-    s+='<text x="'+x+'" y="'+(e.hi?ly-16:ly+20)+'" fill="#8fb0c4" font-size="14" text-anchor="middle">'+fmtClock(e.ms)+'</text>';
+    const ly=e.hi?yy-30:yy+42, tw=78;
+    s+='<g><rect x="'+(x-tw/2)+'" y="'+(ly-20)+'" width="'+tw+'" height="30" rx="6" fill="#e9eef2"/>'+
+       '<text x="'+x+'" y="'+(ly+2)+'" fill="#12202c" font-size="26" font-weight="800" text-anchor="middle">'+Math.round(e.cm)+'<tspan font-size="17" font-weight="600">cm</tspan></text></g>';
+    s+='<text x="'+x+'" y="'+(e.hi?ly-28:ly+30)+'" fill="#a8c6da" font-size="22" font-weight="600" text-anchor="middle">'+fmtClock(e.ms)+'</text>';
   });
 
   // now line + (A) 向き矢印・速さ
@@ -655,10 +656,11 @@ function render(){
       '<circle cx="'+x+'" cy="'+yy+'" r="5" fill="#e05138" stroke="#fff" stroke-width="1.5"/></g>';
     // (A) 矢印(上げ↑/下げ↓) + 速さ cm/10min（点のそばに最小限）
     const ar=st.rising?'▲':'▼', arc=st.rising?'#7fc5ec':'#eec16a';
-    const lx=x+(x> (W*0.7)? -8 : 10), anch=(x>W*0.7)?'end':'start';
-    s+='<text x="'+lx+'" y="'+(yy-6)+'" fill="'+arc+'" font-size="17" font-weight="800" text-anchor="'+anch+'">'+ar+' '+Math.abs(st.slope).toFixed(1)+'<tspan font-size="12" fill="#9fb8c8">cm/10分</tspan></text>';
-    s+='<rect x="'+(x-26)+'" y="'+(bot-2)+'" width="52" height="20" rx="4" fill="#e05138"/>'+
-       '<text x="'+x+'" y="'+(bot+12)+'" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">'+Math.round(st.h)+'cm</text>';
+    const _sx=Math.max(78,Math.min(W-78,x)), _sy=top+8;   // プロット上部・カーブに被らない位置
+    s+='<rect x="'+(_sx-76)+'" y="'+_sy+'" width="152" height="30" rx="8" fill="#0b1a26" opacity="0.94" stroke="#2c6f8c"/>'+
+       '<text x="'+_sx+'" y="'+(_sy+22)+'" fill="'+arc+'" font-size="23" font-weight="800" text-anchor="middle">'+ar+' '+Math.abs(st.slope).toFixed(1)+'<tspan font-size="15" fill="#9fb8c8"> cm/10分</tspan></text>';
+    s+='<rect x="'+(x-40)+'" y="'+(bot-3)+'" width="80" height="30" rx="6" fill="#e05138"/>'+
+       '<text x="'+x+'" y="'+(bot+18)+'" fill="#fff" font-size="24" font-weight="800" text-anchor="middle">'+Math.round(st.h)+'cm</text>';
   }
   {
    // 日付帯：表示窓に入る各日の区間を上部に貼り付け（0時境界で区切り・ドラッグで一緒に流れる）
@@ -964,7 +966,9 @@ function wxRender(){
   document.getElementById('wxbody').innerHTML=(wxView==='arrow'?arrowHTML():(tableHTML()+dayTabsHTML()));
   document.querySelectorAll('#wxmenu button').forEach(b=>b.classList.toggle('on',b.dataset.v===wxView));
   { const nb=document.getElementById('wxnowbtn'); if(nb) nb.hidden=(wxView!=='arrow'); }
-  if(wxView==='table') document.querySelectorAll('.wxday').forEach(el=>el.onclick=()=>{wxDay=+el.dataset.i;wxRender();});
+  if(wxView==='table') document.querySelectorAll('.wxday').forEach(el=>el.onclick=()=>{wxDay=+el.dataset.i;wxRender();
+    try{const k=WXDATA.keys[wxDay];const[Y,M,D]=k.split('-').map(Number);
+      windySetTime(wxDay===todayIdx()?null:jstMidnight(Y,M,D)+12*3600000);}catch(e){}});
   if(wxView==='arrow') wireArrowScroll();
   document.getElementById('wxsrc').textContent=(WXSAMPLE?'サンプル表示（この枠は通信不可）。ブラウザで開くと実データ。':'出典：Open-Meteo')+' ／ '+POINT.name;
 }
@@ -1106,7 +1110,9 @@ function renderWav(){
       '<div class="wavrow wtemp">'+wt+'</div>'+
     '</div></div></div>'+ wavDayTabs();
   document.getElementById('wavsrc').textContent=(WXOFFLINE?'オフライン表示（'+fmtCacheT(WXCACHET)+'取得）':(WXSAMPLE?'サンプル表示（ブラウザで実データ）':'出典：Open-Meteo Marine'))+' ／ '+POINT.name;
-  document.querySelectorAll('.wavday').forEach(el=>el.onclick=()=>{wavDay=+el.dataset.i;renderWav();});
+  document.querySelectorAll('.wavday').forEach(el=>el.onclick=()=>{wavDay=+el.dataset.i;renderWav();
+    try{const k=WXDATA.keys[wavDay];const[Y,M,D]=k.split('-').map(Number);
+      windySetTime(wavDay===todayIdx()?null:jstMidnight(Y,M,D)+12*3600000);}catch(e){}});
   // 横ドラッグ
   const sc=document.getElementById('wavscroll');
   if(sc){let dg=false,dc=false,hz=false,sx=0,sy=0,ss=0;
@@ -1196,15 +1202,26 @@ wxGo(); warnGo(); setInterval(warnGo,600000);
 
 // ===== 風レイヤー（Windy iframe・配置確認用） =====
 (function(){
-  let wlat=POINT.lat, wlon=POINT.lon;
+  let wlat=POINT.lat, wlon=POINT.lon, wts=null;   // wts=予報時刻(ms)。null=現在
   {const wn=document.getElementById("windname"); if(wn) wn.textContent=POINT.name;}
   function buildWindy(){
     const p=new URLSearchParams({lat:wlat,lon:wlon,detailLat:wlat,detailLon:wlon,zoom:'12',level:'surface',
-      overlay:'wind',menu:'',message:'true',marker:'true',calendar:'now',pressure:'',type:'map',
+      overlay:'wind',menu:'',message:'true',marker:'true',calendar:wts?'':'now',pressure:'',type:'map',
       location:'coordinates',detail:'true',metricWind:'m/s',metricTemp:'°C',radarRange:'-1'});
+    if(wts) p.set('timestamp', String(wts));
     const f=document.getElementById('windy'); if(f){f.onload=function(){const ph=document.getElementById('windph');if(ph)ph.style.display='none';};f.src='https://embed.windy.com/embed2.html?'+p.toString();}}
-  document.querySelectorAll('#windspots button').forEach(b=>b.onclick=()=>{wlat=b.dataset.lat;wlon=b.dataset.lon;
-    document.querySelectorAll('#windspots button').forEach(x=>x.classList.toggle('on',x===b));buildWindy();});
+  // 外部（日付タブ）から予報日時を切り替える窓口
+  window.windySetTime=function(ms){ wts=ms; buildWindy(); };
+  document.querySelectorAll('#windspots button:not(#windOpen)').forEach(b=>b.onclick=()=>{wlat=b.dataset.lat;wlon=b.dataset.lon;
+    document.querySelectorAll('#windspots button:not(#windOpen)').forEach(x=>x.classList.toggle('on',x===b));buildWindy();});
+  // 別窓で本家Windyを開く（ポイント・日時を引き継ぎ）
+  const _wo=document.getElementById('windOpen');
+  if(_wo)_wo.onclick=function(){
+    const q=new URLSearchParams({lat:String(wlat),lon:String(wlon),detailLat:String(wlat),detailLon:String(wlon),
+      zoom:'11',level:'surface',overlay:'wind',product:'ecmwf',metricWind:'m/s',metricTemp:'°C',marker:'true',location:'coordinates'});
+    if(wts) q.set('calendar', String(wts));
+    window.open('https://www.windy.com/?'+q.toString(),'_blank','noopener');
+  };
   buildWindy();
 })();
 </script>
