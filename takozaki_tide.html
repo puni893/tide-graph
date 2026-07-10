@@ -209,7 +209,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .nowbar .dir{font-weight:800;padding:4px 12px;border-radius:999px;font-size:22px}
   .nowbar .up{background:#2f9bd433;color:#7fc5ec;border:1px solid #2f9bd4}
   .nowbar .down{background:#e3a72c22;color:#eec16a;border:1px solid #c8901f}
-  .nowbar .nx{color:var(--mut)} .nowbar .nx b{color:var(--ink)}
+  .nowbar .nx{flex-basis:100%;color:var(--mut)} .nowbar .nx b{color:var(--ink)}
   .nowbar.stale{opacity:.55}
   .chip.now{background:#12303f;border-color:#2c6f8c;color:#cfe8f5;font-weight:700}
   @keyframes nowpulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -760,7 +760,7 @@ function updateNowbar(){
   let nx='';
   if(st.next){const p=jstParts(st.next.ms);const mins=Math.round((st.next.ms-Date.now())/60000);
     const hh=Math.floor(mins/60), mm=mins%60;
-    nx='次の'+(st.next.hi?'満潮':'干潮')+' <b>'+fmtHM(p.hh)+'</b>（あと'+(hh>0?hh+'時間':'')+mm+'分）／ '+Math.round(tide(st.next.ms))+'cm';}
+    nx='次の'+(st.next.hi?'満潮':'干潮')+' <b>'+fmtHM(p.hh)+'</b><br>（あと'+(hh>0?hh+'時間':'')+mm+'分）／ '+Math.round(tide(st.next.ms))+'cm';}
   nb.innerHTML='<span class="cm">現在 '+Math.round(st.h)+'cm</span>'+
     '<span class="dir '+dirCls+'">'+dirTxt+'</span>'+
     '<span style="color:#9fb8c8">'+Math.abs(st.slope).toFixed(1)+'cm/10分</span>'+

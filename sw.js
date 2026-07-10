@@ -1,4 +1,4 @@
-const CACHE='ika-kaiyo-v2';
+const CACHE='ika-kaiyo-v3';
 const SHELL=[
   'home_map.html','takozaki_tide.html','manifest.json','icon.svg',
   'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css',
