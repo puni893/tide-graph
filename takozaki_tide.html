@@ -569,6 +569,11 @@ function render(){
       ext.push({ms:mss[i],cm:hts[i],hi:hts[i]>hts[i-1]});
   }
   const exf=[]; ext.forEach(e=>{if(!exf.length||(e.ms-exf[exf.length-1].ms)>0.6*3600000)exf.push(e);});
+  // 極値を精密化：粗いグリッド(5分)だとドラッグで分がガタつくため、真のピークを局所探索
+  exf.forEach(e=>{let best=e.ms,bv=tide(e.ms);
+    for(let d=-480000;d<=480000;d+=15000){const t=e.ms+d,v=tide(t);
+      if(e.hi? v>bv : v<bv){bv=v;best=t;}}
+    e.ms=best; e.cm=bv;});
 
   const W=720,Hh=640,padL=8,padR=8,top=112,bot=580,yMin=-20,yMax=340;
   const xF=ms=>padL+(ms-leftMs)/WIN*(W-padL-padR);
