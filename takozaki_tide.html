@@ -488,7 +488,7 @@ function scheduleRender(){if(rafPending)return;rafPending=true;requestAnimationF
 
 function tideState(ms){
   const h=tide(ms);
-  const slope=(tide(ms+300000)-tide(ms-300000))/10; // cm/10min 近似(±5分)
+  const slope=(tide(ms+300000)-tide(ms-300000)); // cm/10min(10分間の変化)
   const rising=slope>=0;
   // 次の転流(満/干)を探索：符号反転を10分刻みで前方探索
   let prevS=slope, t=ms, found=null;
