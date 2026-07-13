@@ -563,10 +563,13 @@ function render(){
   // sample across window (絶対ms)
   const N=289, hts=[], mss=[];
   for(let i=0;i<N;i++){const ms=leftMs+i/(N-1)*WIN; mss.push(ms); hts.push(tide(ms));}
-  const ext=[];
-  for(let i=1;i<N-1;i++){
-    if((hts[i]>hts[i-1]&&hts[i]>=hts[i+1])||(hts[i]<hts[i-1]&&hts[i]<=hts[i+1]))
-      ext.push({ms:mss[i],cm:hts[i],hi:hts[i]>hts[i-1]});
+  // 極値検出は「絶対時刻グリッド」で行う（表示窓leftMsに依存させない＝ドラッグでガタつかない）
+  const ext=[]; { const STEP=300000, g0=Math.floor((leftMs-3600000)/STEP)*STEP, gEnd=rightMs+3600000;
+    let ppv=null, pv=null, pt=null;
+    for(let t=g0;t<=gEnd;t+=STEP){const v=tide(t);
+      if(ppv!=null){ if((pv>ppv&&pv>=v)||(pv<ppv&&pv<=v)) ext.push({ms:pt,cm:pv,hi:pv>ppv}); }
+      ppv=pv; pv=v; pt=t;
+    }
   }
   const exf=[]; ext.forEach(e=>{if(!exf.length||(e.ms-exf[exf.length-1].ms)>0.6*3600000)exf.push(e);});
   // 極値を精密化：粗いグリッド(5分)だとドラッグで分がガタつくため、真のピークを局所探索
