@@ -209,6 +209,13 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   .nowbar .dir{font-weight:800;padding:4px 12px;border-radius:999px;font-size:22px}
   .nowbar .up{background:#2f9bd433;color:#7fc5ec;border:1px solid #2f9bd4}
   .nowbar .down{background:#e3a72c22;color:#eec16a;border:1px solid #c8901f}
+  @keyframes slowblink{0%,100%{opacity:1}50%{opacity:0.38}}
+  .nowbar .slack{background:#e0513833;color:#ff9e7a;border:1px solid #e05138;font-weight:900;animation:slowblink 2.4s ease-in-out infinite}
+  .nowbar .tideflow{flex-basis:100%;font-size:16px;font-weight:800;color:#ffb38a;margin-top:3px;letter-spacing:.02em}
+  .nowbar .tideflow.blink{animation:slowblink 2.4s ease-in-out infinite}
+  .nowbar .tideflow .cd{color:#ffd9a0;font-weight:700}
+  .nowbar .tideflow.go{color:#8fe0a8}
+  .nowbar .tideflow.soon{color:#c8b28a;font-weight:700}
   .nowbar .nx{flex-basis:100%;color:var(--mut)} .nowbar .nx b{color:var(--ink)}
   .nowbar.stale{opacity:.55}
   .chip.now{background:#12303f;border-color:#2c6f8c;color:#cfe8f5;font-weight:700}
@@ -655,10 +662,13 @@ function render(){
       '<line x1="'+x+'" y1="40" x2="'+x+'" y2="'+bot+'" stroke="#e05138" stroke-width="2"/>'+
       '<circle cx="'+x+'" cy="'+yy+'" r="5" fill="#e05138" stroke="#fff" stroke-width="1.5"/></g>';
     // (A) 矢印(上げ↑/下げ↓) + 速さ cm/10min（点のそばに最小限）
-    const ar=st.rising?'▲':'▼', arc=st.rising?'#7fc5ec':'#eec16a';
-    const _sx=Math.max(78,Math.min(W-78,x)), _sy=top+8;   // プロット上部・カーブに被らない位置
-    s+='<rect x="'+(_sx-76)+'" y="'+_sy+'" width="152" height="30" rx="8" fill="#0b1a26" opacity="0.94" stroke="#2c6f8c"/>'+
-       '<text x="'+_sx+'" y="'+(_sy+22)+'" fill="'+arc+'" font-size="23" font-weight="800" text-anchor="middle">'+ar+' '+Math.abs(st.slope).toFixed(1)+'<tspan font-size="15" fill="#9fb8c8"> cm/10分</tspan></text>';
+    const _slack=Math.abs(st.slope)<0.6;
+    const ar=st.rising?'▲':'▼', arc=_slack?'#ff9e7a':(st.rising?'#7fc5ec':'#eec16a');
+    const _sx=Math.max(84,Math.min(W-84,x)), _sy=top+8;   // プロット上部・カーブに被らない位置
+    const _stxt=_slack?'潮止まり':(ar+' '+Math.abs(st.slope).toFixed(1)+'cm/10分');
+    const _anim=_slack?'<animate attributeName="opacity" values="1;0.4;1" dur="2.4s" repeatCount="indefinite"/>':'';
+    s+='<g>'+_anim+'<rect x="'+(_sx-82)+'" y="'+_sy+'" width="164" height="30" rx="8" fill="#0b1a26" opacity="0.94" stroke="'+(_slack?'#e05138':'#2c6f8c')+'"/>'+
+       '<text x="'+_sx+'" y="'+(_sy+22)+'" fill="'+arc+'" font-size="23" font-weight="800" text-anchor="middle">'+_stxt+'</text></g>';
     s+='<rect x="'+(x-40)+'" y="'+(bot-3)+'" width="80" height="30" rx="6" fill="#e05138"/>'+
        '<text x="'+x+'" y="'+(bot+18)+'" fill="#fff" font-size="24" font-weight="800" text-anchor="middle">'+Math.round(st.h)+'cm</text>';
   }
@@ -753,18 +763,37 @@ chartEl.addEventListener('pointerleave',endDrag);
 document.getElementById('prev').onclick=()=>setView(viewStart-24*3600000);
 document.getElementById('next').onclick=()=>setView(viewStart+24*3600000);
 
+function _slopeAt(ms){return tide(ms+5*60000)-tide(ms-5*60000);}   // cm/10分
+function _nextCross(from,wantMoving){for(let m=1;m<=480;m++){const t=from+m*60000;
+  if((Math.abs(_slopeAt(t))>=0.6)===wantMoving)return t;}return null;}
 function updateNowbar(){
-  const st=tideState(Date.now());
+  const now=Date.now();
+  const st=tideState(now);
   const nb=document.getElementById('nowbar');
-  const dirCls=st.rising?'up':'down', dirTxt=st.rising?'↑ 上げ潮':'↓ 下げ潮';
+  const slack=Math.abs(st.slope)<0.6;   // 変化ほぼ無し=潮止まり
+  const dirCls=slack?'slack':(st.rising?'up':'down');
+  const dirTxt=slack?'潮止まり':(st.rising?'↑ 上げ潮':'↓ 下げ潮');
   let nx='';
-  if(st.next){const p=jstParts(st.next.ms);const mins=Math.round((st.next.ms-Date.now())/60000);
+  if(st.next){const p=jstParts(st.next.ms);const mins=Math.round((st.next.ms-now)/60000);
     const hh=Math.floor(mins/60), mm=mins%60;
     nx='次の'+(st.next.hi?'満潮':'干潮')+' <b>'+fmtHM(p.hh)+'</b><br>（あと'+(hh>0?hh+'時間':'')+mm+'分）／ '+Math.round(tide(st.next.ms))+'cm';}
+  // ===== 潮の流れ演出（静かに語る）=====
+  let flow='';
+  const wasSlack=Math.abs(_slopeAt(now-4*60000))<0.6;
+  if(slack){
+    const goMs=_nextCross(now,true);
+    const mm=goMs?Math.max(1,Math.round((goMs-now)/60000)):null;
+    flow='<span class="tideflow blink">潮、静寂の時、、'+(mm?' <span class="cd">動き出しまで あと'+mm+'分</span>':'')+'</span>';
+  } else if(wasSlack){
+    flow='<span class="tideflow go">そして潮は、、動き出す、、</span>';
+  } else {
+    const slMs=_nextCross(now,false);
+    if(slMs){const mm=Math.round((slMs-now)/60000); if(mm<=10) flow='<span class="tideflow soon">まもなく潮は止まる、、 あと'+mm+'分</span>';}
+  }
   nb.innerHTML='<span class="cm">現在 '+Math.round(st.h)+'cm</span>'+
     '<span class="dir '+dirCls+'">'+dirTxt+'</span>'+
     '<span style="color:#9fb8c8">'+Math.abs(st.slope).toFixed(1)+'cm/10分</span>'+
-    '<span class="nx">'+nx+'</span>';
+    '<span class="nx">'+nx+'</span>'+flow;
 }
 
 document.getElementById('tonow').onclick=()=>setView(Date.now()-WIN/2);
