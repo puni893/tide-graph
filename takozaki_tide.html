@@ -238,16 +238,6 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   #uiPanel .hint{font-size:13px;color:#9db3c4;text-align:center;margin:10px 0 6px;line-height:1.5}
   #uiPanel .reset{background:transparent;border:1px solid #3a5b73;color:#bcd8ea;border-radius:10px;
     font-size:14px;padding:9px 18px;cursor:pointer}
-  .chartwrap{position:relative}
-  #chartExpand{position:absolute;top:10px;right:14px;z-index:6;background:rgba(14,42,61,.92);
-    border:1px solid #2c6f8c;color:#cfe8f5;border-radius:9px;width:38px;height:38px;font-size:18px;cursor:pointer;line-height:1}
-  #chartFull{position:fixed;inset:0;z-index:400;display:none;background:#0c1620;flex-direction:column}
-  #chartFull.show{display:flex}
-  #chartFull .fhd{display:flex;align-items:center;gap:12px;justify-content:flex-start;padding:12px 14px;border-bottom:1px solid #22384a}
-  #chartFull .fhd .t{font-size:17px;font-weight:800;color:#eaf3fa}
-  #chartFull .fx{background:#0e2a3d;border:1px solid #2c6f8c;color:#cfe8f5;border-radius:10px;font-size:17px;font-weight:700;padding:9px 16px;cursor:pointer}
-  #chartFull .fbody{flex:1;min-height:0;padding:6px}
-  #chartFull svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
   .wavcomment{padding:11px 13px;font-size:15px;font-weight:700;color:#dbe8f2;background:#0e1e2a;border-bottom:1px solid #1a2b3a;line-height:1.55}
   .wavcomment .lg{float:right;font-size:11px;font-weight:600;color:#9fb3c4}
   .wavcomment .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin:0 2px 0 6px}
@@ -298,7 +288,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
 </div>
 <div class="nowbar" id="nowbar"></div>
 <div class="infobar" id="infobar"></div>
-<div class="chartwrap"><button id="chartExpand" title="全画面で見る">⛶</button><svg class="chart" id="chart" viewBox="0 0 720 640" preserveAspectRatio="xMidYMid meet"></svg></div>
+<div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 720 640" preserveAspectRatio="xMidYMid meet"></svg></div>
 <div class="panel">
   <div class="phd" id="seahd">海面情報（高後崎・基準値）</div>
   <div class="sea">
@@ -506,33 +496,6 @@ function tideState(ms){
   }
   return {h,slope,rising,next:found};
 }
-function enlargeForFull(str){
-  // 全画面専用：主要な数字を大きく＋ヘッダーは「大きくしたぶん縦に離す」
-  return str
-    // ---- プロット内の数字（余裕があるので大きく）----
-    .split('fill="#5f8299" font-size="17"').join('fill="#5f8299" font-size="30"')       // 時刻軸
-    .split('fill="#12202c" font-size="18"').join('fill="#12202c" font-size="30"')       // 満干cm
-    .split('<tspan font-size="13" font-weight="600">cm').join('<tspan font-size="21" font-weight="600">cm')
-    .split('fill="#8fb0c4" font-size="14"').join('fill="#8fb0c4" font-size="24"')       // 満干時刻
-    .split('fill="#fff" font-size="16" font-weight="700"').join('fill="#fff" font-size="26" font-weight="700"') // 現在値
-    .split('fill="#6b8296" font-size="15"').join('fill="#6b8296" font-size="24"')       // Avg
-    .split('fill="#55697a" font-size="15"').join('fill="#55697a" font-size="24"')       // 0
-    .split('font-size="17" font-weight="800"').join('font-size="27" font-weight="800"') // 傾き
-    .split('<tspan font-size="12" fill="#9fb8c8">cm/10分').join('<tspan font-size="19" fill="#9fb8c8">cm/10分')
-    // ---- ヘッダー：段差配置で重なり回避（band16 / 日出入40 / 月62 / プロット内日付は下へ）----
-    .split('y="23"').join('y="12"')
-    .split('font-size="20" font-weight="700" text-anchor="middle">').join('font-size="21" font-weight="700" text-anchor="middle">') // 日付バー
-    .split('y="34"').join('y="40"')
-    .split('fill="#f0c05a" font-size="16"').join('fill="#f0c05a" font-size="17"')       // ☀
-    .split('fill="#f0955a" font-size="16"').join('fill="#f0955a" font-size="17"')       // 🌇
-    .split('y="51"').join('y="60"')
-    .split('fill="#9fc0e0" font-size="16"').join('fill="#9fc0e0" font-size="17"')       // 🌙↑
-    .split('fill="#7fa0c0" font-size="16"').join('fill="#7fa0c0" font-size="17"')       // 🌙↓
-    .split('<tspan font-size="22" font-weight="700">↑').join('<tspan font-size="23" font-weight="700">↑')
-    .split('<tspan font-size="22" font-weight="700">↓').join('<tspan font-size="23" font-weight="700">↓')
-    // プロット上端の日付(dp2 y=68)は月と被るのでプロット内へ下げる
-    .split('fill="#7fb8d8" font-size="16">').join('fill="#7fb8d8" font-size="16" opacity="0">');
-}
 function render(){
   const leftMs=viewStart, rightMs=leftMs+WIN, centerMs=leftMs+WIN/2;
   // header: 中央の日付
@@ -706,8 +669,6 @@ function render(){
    s+=band;
   }
   document.getElementById('chart').innerHTML=s;
-  var _fs=document.getElementById('chartFullSvg');
-  if(_fs && document.getElementById('chartFull').classList.contains('show')) _fs.innerHTML=enlargeForFull(s);
   updateTodayTide();
 }
 
@@ -728,30 +689,6 @@ function updateTodayTide(){
     '<div class="tt-cell tt-lo"><div class="tk">本日の最干潮</div><div class="tv">'+Math.round(lo.cm)+'<small>cm</small></div>'+
       '<div class="tsub">'+fmtHM(jstParts(lo.ms).hh)+'</div></div>';
 }
-
-// --- 潮位グラフ全画面 ---
-(function(){
-  var fsWired=false;
-  function wireFullDrag(){
-    if(fsWired)return; var fsvg=document.getElementById('chartFullSvg'); if(!fsvg)return; fsWired=true;
-    var dg=false,sx=0,sv=0;
-    fsvg.addEventListener('pointerdown',function(e){dg=true;sx=e.clientX;sv=viewStart;try{fsvg.setPointerCapture(e.pointerId);}catch(_){}});
-    fsvg.addEventListener('pointermove',function(e){if(!dg)return;var dx=e.clientX-sx;var hpp=24/fsvg.clientWidth;viewStart=sv-dx*hpp*3600000;scheduleRender();});
-    function end(){dg=false;}
-    fsvg.addEventListener('pointerup',end); fsvg.addEventListener('pointercancel',end);
-  }
-  function openFull(){var ov=document.getElementById('chartFull'); if(!ov)return;
-    var src=document.getElementById('chart'), fs=document.getElementById('chartFullSvg');
-    if(fs&&src)fs.innerHTML=enlargeForFull(src.innerHTML);
-    var t=document.getElementById('chartFullTtl'); if(t&&window.POINT)t.textContent=POINT.name+' 潮位';
-    ov.classList.add('show'); wireFullDrag();}
-  function closeFull(){var ov=document.getElementById('chartFull'); if(ov)ov.classList.remove('show');}
-  var btn=document.getElementById('chartExpand'); if(btn)btn.onclick=openFull;
-  // 閉じるボタンは後から存在するので委譲でも良いが、DOMContentLoaded後に配線
-  document.addEventListener('click',function(e){if(!e.target)return;
-    if(e.target.id==='chartFullClose')closeFull();
-    if(e.target.id==='chartFullNow'){setView(Date.now()-WIN/2);}});
-})();
 
 // --- ドラッグ操作 ---
 const chartEl=document.getElementById('chart');
@@ -1284,9 +1221,5 @@ wxGo(); warnGo(); setInterval(warnGo,600000);
   var rs=document.getElementById('uiReset'); if(rs)rs.onclick=function(){apply(null);}; // 標準=素
 })();
 </script>
-<div id="chartFull">
-  <div class="fhd"><button class="fx" id="chartFullClose">‹ 戻る</button><span class="t" id="chartFullTtl" style="flex:1">潮位グラフ</span><button class="fx" id="chartFullNow">今</button></div>
-  <div class="fbody"><svg id="chartFullSvg" viewBox="0 0 720 640" preserveAspectRatio="none"></svg></div>
-</div>
 </body>
 </html>
