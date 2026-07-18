@@ -108,9 +108,26 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   #uiPanel input[type=range]{flex:1;height:36px}
   #uiPanel .hint{font-size:13px;color:#9db3c4;text-align:center;margin:10px 0 6px;line-height:1.5}
   #uiPanel .reset{background:transparent;border:1px solid #3a5b73;color:#bcd8ea;border-radius:10px;font-size:14px;padding:9px 18px;cursor:pointer}
+  #delAsk{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:rgba(4,10,16,.72)}
+  #delAsk.show{display:flex}
+  #delAsk .card{width:86%;max-width:400px;background:#14212e;border:1px solid #e05138;border-radius:16px;padding:20px 18px 16px;box-shadow:0 10px 40px #000b;text-align:center}
+  #delAsk .jj{font-size:19px;font-weight:900;color:#ff9e7a;line-height:1.5;letter-spacing:.02em}
+  #delAsk .nm{font-size:14px;color:#9fb8c8;margin:8px 0 16px}
+  #delAsk .btns{display:flex;gap:10px}
+  #delAsk button{flex:1;font-size:16px;font-weight:800;padding:13px 0;border-radius:12px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  #delAsk .yes{background:#e05138;border:0;color:#fff}
+  #delAsk .no{background:#0e2a3d;border:1px solid #2c6f8c;color:#cfe8f5}
 </style>
 </head>
 <body>
+<div id="delAsk"><div class="card">
+  <div class="jj" id="delMsg">この地点を、消し去るというのか、、！？</div>
+  <div class="nm" id="delNm"></div>
+  <div class="btns">
+    <button class="no" id="delNo">やめておく</button>
+    <button class="yes" id="delYes">消す</button>
+  </div>
+</div></div>
 <div id="uiPanel"><div class="card">
   <div class="r"><span class="ttl">表示サイズ</span><button class="x" id="uiClose">✕</button></div>
   <div class="r">
@@ -422,7 +439,7 @@ function renderFavs(){
     const q=new URLSearchParams({name:f.name,lat:f.lat,lon:f.lon,station:station,toff:findToff(f.lat,f.lon)});
     location.href='takozaki_tide.html?'+q.toString();});
   el.querySelectorAll('.edit').forEach(b=>b.onclick=e=>{e.stopPropagation();openRename(+b.dataset.e);});
-  el.querySelectorAll('.del').forEach(b=>b.onclick=e=>{e.stopPropagation();favs.splice(+b.dataset.d,1);saveFavs();renderFavs();drawMarkers();buildMatrix();});
+  el.querySelectorAll('.del').forEach(b=>b.onclick=e=>{e.stopPropagation();askDelete(+b.dataset.d);});
 }
 function drawMarkers(){
   if(useCanvas){drawCanvas();return;}
@@ -464,6 +481,30 @@ if(window.maplibregl){initMapLibre();} else {
   var mn=document.getElementById('uiMinus'); if(mn)mn.onclick=function(){var c=savedPx();if(c==null)return;var n=c+20;apply(n>=HIpx?null:n);}; // A−小さく(端で素)
   var rs=document.getElementById('uiReset'); if(rs)rs.onclick=function(){apply(null);}; // 標準=素
 })();
+
+// ===== 地点削除の確認（ジョジョ風・誤タップ防止） =====
+let _delIdx=-1;
+const _delLines=[
+  'この地点を、消し去るというのか、、！？',
+  '本当に、、この場所を捨てる覚悟はあるか、、',
+  'そのポイント、、二度と戻らんぞ、、！',
+  '削除する、、それがお前の選んだ道か、、'
+];
+function askDelete(i){
+  _delIdx=i;
+  const f=favs[i]; if(!f)return;
+  document.getElementById('delMsg').textContent=_delLines[Math.floor(Math.random()*_delLines.length)];
+  document.getElementById('delNm').textContent='「'+(f.name||'（無名の地点）')+'」';
+  document.getElementById('delAsk').classList.add('show');
+}
+document.addEventListener('click',function(e){
+  if(!e.target)return;
+  if(e.target.id==='delNo'){document.getElementById('delAsk').classList.remove('show');_delIdx=-1;}
+  else if(e.target.id==='delYes'){
+    if(_delIdx>=0){favs.splice(_delIdx,1);saveFavs();renderFavs();drawMarkers();buildMatrix();}
+    document.getElementById('delAsk').classList.remove('show');_delIdx=-1;
+  } else if(e.target.id==='delAsk'){document.getElementById('delAsk').classList.remove('show');_delIdx=-1;}
+});
 </script>
 </body>
 </html>
