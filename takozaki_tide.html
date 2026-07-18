@@ -30,9 +30,10 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
     font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;-webkit-text-size-adjust:100%}
   body{max-width:760px;margin:0 auto;padding-bottom:40px}
   .num{font-variant-numeric:tabular-nums}
-  header{background:linear-gradient(180deg,#1a5b86,#123047);padding:14px 16px 12px;border-bottom:1px solid var(--rule)}
+  header{background:linear-gradient(180deg,#1a5b86,#123047);border-bottom:1px solid var(--rule);
+    padding:calc(14px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 12px calc(16px + env(safe-area-inset-left,0px))}
   .top{display:flex;align-items:center;gap:10px}
-  .backbtn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:9px;width:36px;height:36px;font-size:20px;line-height:1;cursor:pointer;flex:0 0 auto}
+  .backbtn{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:12px;width:48px;height:48px;font-size:26px;font-weight:700;line-height:1;cursor:pointer;flex:0 0 auto;-webkit-tap-highlight-color:transparent;touch-action:manipulation;padding:0;display:flex;align-items:center;justify-content:center}
   .backbtn:active{background:rgba(255,255,255,.22)}
   .top h1{margin:0;font-size:20px;letter-spacing:.03em}
   .top .base{font-size:12.5px;color:#bcd8ea;margin-top:2px}
@@ -222,8 +223,8 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
   @keyframes nowpulse{0%,100%{opacity:1}50%{opacity:.35}}
   #chart .nowline{animation:nowpulse 2.2s ease-in-out infinite}
   @media (prefers-reduced-motion:reduce){#chart .nowline{animation:none}}
-  #uiGear{background:#0e2a3d;border:1px solid #2c6f8c;color:#cfe8f5;border-radius:10px;
-    width:38px;height:38px;font-size:20px;cursor:pointer;line-height:1;flex:0 0 auto;margin-left:6px}
+  #uiGear{background:#0e2a3d;border:1px solid #2c6f8c;color:#cfe8f5;border-radius:12px;
+    width:48px;height:48px;font-size:24px;cursor:pointer;line-height:1;flex:0 0 auto;margin-left:6px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;padding:0}
   #uiPanel{position:fixed;inset:0;z-index:300;display:none;align-items:flex-start;justify-content:center;
     background:rgba(4,10,16,.6)}
   #uiPanel.show{display:flex}
